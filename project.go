@@ -61,6 +61,7 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	if config.namespace != "" {
 		p.projectConfig.Namespace = config.namespace
 	}
+	p.projectConfig.Variables["namespace"] = p.projectConfig.Namespace
 	if p.projectConfig.RootFolder != "" {
 		if !strings.HasPrefix(p.projectConfig.RootFolder, "/") && !strings.HasPrefix(p.projectConfig.RootFolder, "~/") {
 			p.projectConfig.RootFolder = filepath.Join(p.projectFolder, p.projectConfig.RootFolder)
