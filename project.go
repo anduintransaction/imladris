@@ -61,7 +61,6 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	if config.namespace != "" {
 		p.projectConfig.Namespace = config.namespace
 	}
-	p.projectConfig.Variables["namespace"] = p.projectConfig.Namespace
 	if p.projectConfig.RootFolder != "" {
 		if !strings.HasPrefix(p.projectConfig.RootFolder, "/") && !strings.HasPrefix(p.projectConfig.RootFolder, "~/") {
 			p.projectConfig.RootFolder = filepath.Join(p.projectFolder, p.projectConfig.RootFolder)
@@ -69,9 +68,15 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	} else {
 		p.projectConfig.RootFolder = p.projectFolder
 	}
+	if p.projectConfig.Variables == nil {
+		p.projectConfig.Variables = make(map[string]string)
+	}
 	for key, value := range config.variables {
 		p.projectConfig.Variables[key] = value
 	}
+	p.projectConfig.Variables["app_var_namespace"] = p.projectConfig.Namespace
+	p.projectConfig.Variables["app_var_home"] = os.Getenv("HOME")
+	p.projectConfig.Variables["app_data_dir"] = "/data"
 	// Read build info
 	err = p.readBuild()
 	if err != nil {
