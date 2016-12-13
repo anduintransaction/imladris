@@ -32,6 +32,9 @@ type Project struct {
 
 type ProjectConfig struct {
 	RootFolder string            `yaml:"root_folder"`
+	Services   []string          `yaml:"services"`
+	Jobs       []string          `yaml:"jobs"`
+	Resources  []string          `yaml:"resources"`
 	Namespace  string            `yaml:"namespace"`
 	Variables  map[string]string `yaml:"variables"`
 	Build      []*ProjectBuild   `yaml:"build"`
@@ -84,15 +87,15 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	}
 
 	// Read assets
-	p.resources, err = p.readAssets(p.projectConfig.RootFolder + "/resources")
+	p.resources, err = p.readAssets(p.projectConfig.RootFolder, p.projectConfig.Resources, "resources/*")
 	if err != nil {
 		return nil, err
 	}
-	p.jobs, err = p.readAssets(p.projectConfig.RootFolder + "/jobs")
+	p.jobs, err = p.readAssets(p.projectConfig.RootFolder, p.projectConfig.Jobs, "jobs/*")
 	if err != nil {
 		return nil, err
 	}
-	p.services, err = p.readAssets(p.projectConfig.RootFolder + "/services")
+	p.services, err = p.readAssets(p.projectConfig.RootFolder, p.projectConfig.Services, "services/*")
 	if err != nil {
 		return nil, err
 	}
@@ -151,21 +154,24 @@ func (p *Project) readBuild() error {
 	return nil
 }
 
-func (p *Project) readAssets(folder string) ([]*Asset, error) {
-	_, err := os.Stat(folder)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		return nil, nil
+func (p *Project) readAssets(rootFolder string, globs []string, defaultGlob string) ([]*Asset, error) {
+	if len(globs) == 0 {
+		globs = []string{defaultGlob}
 	}
-	infos, err := ioutil.ReadDir(folder)
-	if err != nil {
-		return nil, err
+	assetFiles := []string{}
+	for _, glob := range globs {
+		if !strings.HasPrefix(glob, "/") && !strings.HasPrefix(glob, "~/") {
+			glob = filepath.Join(rootFolder, glob)
+			matches, err := filepath.Glob(glob)
+			if err != nil {
+				return nil, err
+			}
+			assetFiles = append(assetFiles, matches...)
+		}
 	}
 	assets := []*Asset{}
-	for _, info := range infos {
-		asset, err := p.readAsset(folder + "/" + info.Name())
+	for _, filename := range assetFiles {
+		asset, err := p.readAsset(filename)
 		if err != nil {
 			return nil, err
 		}
