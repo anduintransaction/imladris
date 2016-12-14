@@ -15,14 +15,12 @@ import (
 
 	"regexp"
 
-	"github.com/docker/docker/client"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
 )
 
 type Project struct {
 	kubeClient    *kubernetes.Clientset
-	dockerClient  *client.Client
 	projectConfig *ProjectConfig
 	projectFolder string
 	resources     []*Asset
@@ -53,7 +51,6 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 		projectConfig: &ProjectConfig{},
 	}
 	var err error
-	p.dockerClient, err = client.NewEnvClient()
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +236,7 @@ func (p *Project) buildDockerImage(build *ProjectBuild) error {
 	if !strings.HasPrefix(buildContext, "/") && !strings.HasPrefix(buildContext, "~/") {
 		buildContext = filepath.Join(p.projectConfig.RootFolder, buildContext)
 	}
-	return dockerBuildImage(p.dockerClient, buildContext, build.Name+":"+build.Tag)
+	return dockerBuildImage(buildContext, build.Name+":"+build.Tag)
 }
 
 func (p *Project) Down() error {

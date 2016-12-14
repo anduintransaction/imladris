@@ -31,6 +31,12 @@ func (v *variableMap) Set(value string) error {
 }
 
 func main() {
+	// check docker command
+	err := checkDockerCommand()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "docker command not found, please install docker command line")
+		os.Exit(1)
+	}
 	config := &appConfig{
 		variables: make(variableMap),
 	}
