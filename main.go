@@ -61,6 +61,8 @@ func main() {
 		cmdUp(args[1:], config)
 	case "down":
 		cmdDown(args[1:], config)
+	case "update":
+		cmdUpdate(args[1:], config)
 	default:
 		printUsage()
 	}
@@ -68,7 +70,7 @@ func main() {
 
 func printUsage() {
 	ErrPrintf(ColorWhite, "USAGE: %s <flag> [command] <folder>\n", os.Args[0])
-	ErrPrintf(ColorWhite, "Available commands: up, down, restart, version\n")
+	ErrPrintf(ColorWhite, "Available commands: up, down, update, version\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
