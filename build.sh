@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RELEASE=0.0.6
+RELEASE=0.1.0
 dist=dist
 bin=anduin-minikube-deploy
 
