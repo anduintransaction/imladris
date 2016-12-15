@@ -1,14 +1,11 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 func cmdDown(args []string, config *appConfig) {
 	clientset, err := loadKubernetesClient(config)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
 	assetRoot := "."
@@ -17,12 +14,12 @@ func cmdDown(args []string, config *appConfig) {
 	}
 	project, err := readProject(clientset, assetRoot, config)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
 	err = project.Down()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
 }

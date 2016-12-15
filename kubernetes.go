@@ -62,6 +62,18 @@ func createNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 	return err
 }
 
+func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
+	_, err := kubeClient.Core().Namespaces().Get(namespace)
+	if err != nil {
+		if isResourceNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	err = kubeClient.Core().Namespaces().Delete(namespace, &api.DeleteOptions{})
+	return err
+}
+
 func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace string) (bool, error) {
 	var err error
 	switch kind {

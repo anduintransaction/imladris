@@ -34,7 +34,7 @@ func main() {
 	// check docker command
 	err := checkDockerCommand()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "docker command not found, please install docker command line")
+		ErrPrintln(ColorRed, "docker command not found, please install docker command line")
 		os.Exit(1)
 	}
 	config := &appConfig{
@@ -67,8 +67,8 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "USAGE: %s <flag> [command] <folder>\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "Available commands: up, down, restart, version\n")
+	ErrPrintf(ColorWhite, "USAGE: %s <flag> [command] <folder>\n", os.Args[0])
+	ErrPrintf(ColorWhite, "Available commands: up, down, restart, version\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }

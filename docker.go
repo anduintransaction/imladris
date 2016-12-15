@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os/exec"
 )
 
@@ -19,7 +18,7 @@ func checkDockerCommand() error {
 }
 
 func dockerBuildImage(buildContext, tag string) error {
-	fmt.Printf("Building docker image %q in %q\n", tag, buildContext)
+	Printf(ColorYellow, "Building docker image %q in %q\n", tag, buildContext)
 	cmd := exec.Command("docker", "build", "-t", tag, buildContext)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer

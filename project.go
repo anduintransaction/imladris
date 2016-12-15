@@ -67,6 +67,9 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	if config.namespace != "" {
 		p.projectConfig.Namespace = config.namespace
 	}
+	if p.projectConfig.Namespace == "" {
+		p.projectConfig.Namespace = "default"
+	}
 	if p.projectConfig.RootFolder != "" {
 		if !strings.HasPrefix(p.projectConfig.RootFolder, "/") && !strings.HasPrefix(p.projectConfig.RootFolder, "~/") {
 			p.projectConfig.RootFolder = filepath.Join(p.projectFolder, p.projectConfig.RootFolder)
@@ -225,6 +228,10 @@ func (p *Project) Up() error {
 	if err != nil {
 		return err
 	}
+	err = createNamespace(p.kubeClient, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
 	for _, resource := range p.resources {
 		err := p.createAsset(resource)
 		if err != nil {
@@ -287,46 +294,48 @@ func (p *Project) Down() error {
 			return err
 		}
 	}
+	err = deleteNamespace(p.kubeClient, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
 	return p.runScripts(p.projectConfig.FinalizeDown)
 }
 
 func (p *Project) createAsset(asset *Asset) error {
 	objectMeta := asset.ResourceData.(Meta)
 	assetName := objectMeta.GetName()
-	assetNamespace := objectMeta.GetNamespace()
-	if p.projectConfig.Namespace != "" {
-		assetNamespace = p.projectConfig.Namespace
-	}
-	fmt.Printf("Creating %s %q from namespace %q\n", asset.Kind, assetName, assetNamespace)
-	objectMeta.SetNamespace(assetNamespace)
-	err := createNamespace(p.kubeClient, assetNamespace)
-	if err != nil {
-		return err
-	}
-	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, assetNamespace)
+	objectMeta.SetNamespace(p.projectConfig.Namespace)
+	Printf(ColorYellow, "Creating %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
+	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
 	if err != nil {
 		return err
 	}
 	if existed {
+		Println(ColorGreen, "====> Existed")
 		return nil
 	}
-	return createResource(p.kubeClient, asset.Kind, assetNamespace, asset.ResourceData)
+	err = createResource(p.kubeClient, asset.Kind, p.projectConfig.Namespace, asset.ResourceData)
+	if err == nil {
+		Println(ColorGreen, "====> Success")
+	}
+	return err
 }
 
 func (p *Project) destroyAsset(asset *Asset) error {
 	objectMeta := asset.ResourceData.(Meta)
 	assetName := objectMeta.GetName()
-	assetNamespace := objectMeta.GetNamespace()
-	if p.projectConfig.Namespace != "" {
-		assetNamespace = p.projectConfig.Namespace
-	}
-	fmt.Printf("Destroying %s %q from namespace %q\n", asset.Kind, assetName, assetNamespace)
-	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, assetNamespace)
+	Printf(ColorYellow, "Destroying %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
+	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
 	if err != nil {
 		return err
 	}
 	if !existed {
+		Println(ColorGreen, "====> Not existed")
 		return nil
 	}
-	return destroyResource(p.kubeClient, asset.Kind, assetName, assetNamespace)
+	err = destroyResource(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
+	if err == nil {
+		Println(ColorGreen, "====> Success")
+	}
+	return err
 }
