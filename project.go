@@ -15,6 +15,8 @@ import (
 
 	"regexp"
 
+	"os/exec"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
 )
@@ -29,13 +31,17 @@ type Project struct {
 }
 
 type ProjectConfig struct {
-	RootFolder string            `yaml:"root_folder"`
-	Services   []string          `yaml:"services"`
-	Jobs       []string          `yaml:"jobs"`
-	Resources  []string          `yaml:"resources"`
-	Namespace  string            `yaml:"namespace"`
-	Variables  map[string]string `yaml:"variables"`
-	Build      []*ProjectBuild   `yaml:"build"`
+	RootFolder   string            `yaml:"root_folder"`
+	InitUp       []string          `yaml:"init_up"`
+	InitDown     []string          `yaml:"init_down"`
+	FinalizeUp   []string          `yaml:"finalize_up"`
+	FinalizeDown []string          `yaml:"finalize_down"`
+	Services     []string          `yaml:"services"`
+	Jobs         []string          `yaml:"jobs"`
+	Resources    []string          `yaml:"resources"`
+	Namespace    string            `yaml:"namespace"`
+	Variables    map[string]string `yaml:"variables"`
+	Build        []*ProjectBuild   `yaml:"build"`
 }
 
 type ProjectBuild struct {
@@ -195,8 +201,27 @@ func (p *Project) readAsset(filename string) (*Asset, error) {
 	return parseAsset(buf.Bytes())
 }
 
+func (p *Project) runScripts(scripts []string) error {
+	for _, script := range scripts {
+		if !strings.HasPrefix(script, "/") && !strings.HasPrefix(script, "~/") {
+			script = filepath.Join(p.projectConfig.RootFolder, script)
+		}
+		cmd := exec.Command("sh", "-c", script)
+		output, err := cmd.CombinedOutput()
+		fmt.Print(string(output))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *Project) Up() error {
-	err := p.build()
+	err := p.runScripts(p.projectConfig.InitUp)
+	if err != nil {
+		return err
+	}
+	err = p.build()
 	if err != nil {
 		return err
 	}
@@ -218,7 +243,7 @@ func (p *Project) Up() error {
 			return err
 		}
 	}
-	return nil
+	return p.runScripts(p.projectConfig.FinalizeUp)
 }
 
 func (p *Project) build() error {
@@ -240,6 +265,10 @@ func (p *Project) buildDockerImage(build *ProjectBuild) error {
 }
 
 func (p *Project) Down() error {
+	err := p.runScripts(p.projectConfig.InitDown)
+	if err != nil {
+		return err
+	}
 	for _, service := range p.services {
 		err := p.destroyAsset(service)
 		if err != nil {
@@ -258,7 +287,7 @@ func (p *Project) Down() error {
 			return err
 		}
 	}
-	return nil
+	return p.runScripts(p.projectConfig.FinalizeDown)
 }
 
 func (p *Project) createAsset(asset *Asset) error {
