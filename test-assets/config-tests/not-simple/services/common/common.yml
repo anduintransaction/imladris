@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: common
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: common
+    spec:
+      containers:
+        - name: common
+          image: common:{{.common_tag}}
+  revisionHistoryLimit: 10

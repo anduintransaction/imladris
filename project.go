@@ -8,8 +8,6 @@ import (
 
 	"path/filepath"
 
-	"strings"
-
 	"bytes"
 	"text/template"
 
@@ -31,24 +29,34 @@ type Project struct {
 }
 
 type ProjectConfig struct {
-	RootFolder   string            `yaml:"root_folder"`
-	InitUp       []string          `yaml:"init_up"`
-	InitDown     []string          `yaml:"init_down"`
-	FinalizeUp   []string          `yaml:"finalize_up"`
-	FinalizeDown []string          `yaml:"finalize_down"`
-	Services     []string          `yaml:"services"`
-	Jobs         []string          `yaml:"jobs"`
-	Resources    []string          `yaml:"resources"`
-	Namespace    string            `yaml:"namespace"`
-	Variables    map[string]string `yaml:"variables"`
-	Build        []*ProjectBuild   `yaml:"build"`
+	RootFolder   string              `yaml:"root_folder"`
+	InitUp       []string            `yaml:"init_up"`
+	InitDown     []string            `yaml:"init_down"`
+	FinalizeUp   []string            `yaml:"finalize_up"`
+	FinalizeDown []string            `yaml:"finalize_down"`
+	Services     []string            `yaml:"services"`
+	Jobs         []string            `yaml:"jobs"`
+	Resources    []string            `yaml:"resources"`
+	Namespace    string              `yaml:"namespace"`
+	Variables    map[string]string   `yaml:"variables"`
+	Build        []*ProjectBuild     `yaml:"build"`
+	Credentials  []*DockerCredential `yaml:"credentials"`
 }
 
 type ProjectBuild struct {
-	Name    string `yaml:"name"`
-	VarName string `yaml:"var_name"`
-	Tag     string `yaml:"tag"`
-	From    string `yaml:"from"`
+	Name      string `yaml:"name"`
+	VarName   string `yaml:"var_name"`
+	Tag       string `yaml:"tag"`
+	From      string `yaml:"from"`
+	Push      bool   `yaml:"push"`
+	AutoClean bool   `yaml:"auto_clean"`
+}
+
+type DockerCredential struct {
+	Host         string `yaml:"host"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	PasswordFile string `yaml:"password_file"`
 }
 
 func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *appConfig) (*Project, error) {
@@ -71,9 +79,7 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 		p.projectConfig.Namespace = "default"
 	}
 	if p.projectConfig.RootFolder != "" {
-		if !strings.HasPrefix(p.projectConfig.RootFolder, "/") && !strings.HasPrefix(p.projectConfig.RootFolder, "~/") {
-			p.projectConfig.RootFolder = filepath.Join(p.projectFolder, p.projectConfig.RootFolder)
-		}
+		p.projectConfig.RootFolder = translateFilePath(p.projectFolder, p.projectConfig.RootFolder)
 	} else {
 		p.projectConfig.RootFolder = p.projectFolder
 	}
@@ -86,6 +92,7 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	p.projectConfig.Variables["app_var_namespace"] = p.projectConfig.Namespace
 	p.projectConfig.Variables["app_var_home"] = os.Getenv("HOME")
 	p.projectConfig.Variables["app_data_dir"] = "/data"
+
 	// Read build info
 	err = p.readBuild()
 	if err != nil {
@@ -112,7 +119,10 @@ func (p *Project) readProjectConfig(assetRoot string, variables variableMap) err
 	projectFile := assetRoot
 	p.projectFolder = filepath.Dir(assetRoot)
 	info, err := os.Stat(projectFile)
-	if info.IsDir() || err != nil {
+	if err != nil && os.IsNotExist(err) {
+		return err
+	}
+	if err != nil || info.IsDir() {
 		projectFile = assetRoot + "/project.yml"
 		p.projectFolder = assetRoot
 		_, err := os.Stat(projectFile)
@@ -166,14 +176,12 @@ func (p *Project) readAssets(rootFolder string, globs []string, defaultGlob stri
 	}
 	assetFiles := []string{}
 	for _, glob := range globs {
-		if !strings.HasPrefix(glob, "/") && !strings.HasPrefix(glob, "~/") {
-			glob = filepath.Join(rootFolder, glob)
-			matches, err := filepath.Glob(glob)
-			if err != nil {
-				return nil, err
-			}
-			assetFiles = append(assetFiles, matches...)
+		glob = translateFilePath(rootFolder, glob)
+		matches, err := filepath.Glob(glob)
+		if err != nil {
+			return nil, err
 		}
+		assetFiles = append(assetFiles, matches...)
 	}
 	assets := []*Asset{}
 	for _, filename := range assetFiles {
@@ -201,14 +209,17 @@ func (p *Project) readAsset(filename string) (*Asset, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseAsset(buf.Bytes())
+	asset, err := parseAsset(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	asset.UpdateNamespace(p.projectConfig.Namespace)
+	return asset, nil
 }
 
 func (p *Project) runScripts(scripts []string) error {
 	for _, script := range scripts {
-		if !strings.HasPrefix(script, "/") && !strings.HasPrefix(script, "~/") {
-			script = filepath.Join(p.projectConfig.RootFolder, script)
-		}
+		script = translateFilePath(p.projectConfig.RootFolder, script)
 		cmd := exec.Command("sh", "-c", script)
 		output, err := cmd.CombinedOutput()
 		fmt.Print(string(output))
@@ -219,8 +230,22 @@ func (p *Project) runScripts(scripts []string) error {
 	return nil
 }
 
+func (p *Project) dockerLogin() error {
+	for _, credential := range p.projectConfig.Credentials {
+		err := dockerLogin(p.projectConfig.RootFolder, credential)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *Project) Up() error {
 	err := p.runScripts(p.projectConfig.InitUp)
+	if err != nil {
+		return err
+	}
+	err = p.dockerLogin()
 	if err != nil {
 		return err
 	}
@@ -264,11 +289,16 @@ func (p *Project) build() error {
 }
 
 func (p *Project) buildDockerImage(build *ProjectBuild) error {
-	buildContext := build.From
-	if !strings.HasPrefix(buildContext, "/") && !strings.HasPrefix(buildContext, "~/") {
-		buildContext = filepath.Join(p.projectConfig.RootFolder, buildContext)
+	buildContext := translateFilePath(p.projectConfig.RootFolder, build.From)
+	tagName := build.Name + ":" + build.Tag
+	err := dockerBuildImage(buildContext, tagName)
+	if err != nil {
+		return err
 	}
-	return dockerBuildImage(buildContext, build.Name+":"+build.Tag)
+	if !build.Push {
+		return nil
+	}
+	return dockerPush(tagName)
 }
 
 func (p *Project) Down() error {
@@ -298,13 +328,21 @@ func (p *Project) Down() error {
 	if err != nil {
 		return err
 	}
+	for _, build := range p.projectConfig.Build {
+		if build.AutoClean {
+			err = dockerRmi(build.Name + ":" + build.Tag)
+			if err != nil {
+				// Bail error here
+				ErrPrintln(ColorRed, err)
+			}
+		}
+	}
 	return p.runScripts(p.projectConfig.FinalizeDown)
 }
 
 func (p *Project) createAsset(asset *Asset) error {
 	objectMeta := asset.ResourceData.(Meta)
 	assetName := objectMeta.GetName()
-	objectMeta.SetNamespace(p.projectConfig.Namespace)
 	Printf(ColorYellow, "Creating %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
 	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
 	if err != nil {

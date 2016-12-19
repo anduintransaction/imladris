@@ -1,0 +1,13 @@
+root_folder: ..
+namespace: mkb
+resources:
+    - resources/config.yml
+services:
+    - services/common/*.yml
+    - services/local/*.yml
+variables:
+    common_tag: {{.variable_common_tag}}
+build:
+    - name: anduin/initimage
+      tag: 1.4.3
+      from: build

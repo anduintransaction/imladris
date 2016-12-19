@@ -1,0 +1,10 @@
+root_folder: ..
+namespace: build
+build:
+    - name: anduin/test
+      tag: 1.2.1
+      from: "build/test"
+    - name: anduin/test2
+      tag: 3.1.4
+      var_name: test_image_2
+      from: "build/test2"

@@ -7,7 +7,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/pkg/api/v1"
-	"k8s.io/client-go/1.4/pkg/apis/apps/v1alpha1"
 	v1batch "k8s.io/client-go/1.4/pkg/apis/batch/v1"
 	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 	kubeyaml "k8s.io/client-go/1.4/pkg/util/yaml"
@@ -52,8 +51,6 @@ func (asset *Asset) parseResource(data []byte) error {
 		asset.ResourceData = &v1.PersistentVolumeClaim{}
 	case "configmap":
 		asset.ResourceData = &v1.ConfigMap{}
-	case "petset":
-		asset.ResourceData = &v1alpha1.PetSet{}
 	default:
 		return UnsupportedResource(asset.Kind)
 	}
@@ -62,6 +59,11 @@ func (asset *Asset) parseResource(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (asset *Asset) UpdateNamespace(namespace string) {
+	objectMeta := asset.ResourceData.(Meta)
+	objectMeta.SetNamespace(namespace)
 }
 
 type Meta interface {

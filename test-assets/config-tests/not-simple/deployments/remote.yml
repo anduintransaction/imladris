@@ -1,0 +1,11 @@
+root_folder: ..
+namespace: bkb
+services:
+    - services/common/*.yml
+    - services/remote/*.yml
+variables:
+    common_tag: 1.2.4
+build:
+    - name: anduin/initimage
+      tag: 1.4.3
+      from: build

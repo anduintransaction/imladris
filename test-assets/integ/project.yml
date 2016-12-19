@@ -1,0 +1,13 @@
+root_folder: .
+namespace: anduin
+variables:
+    consul_tag: "0.7.1_1"
+init_up:
+    - scripts/init.sh
+finalize_up:
+    - scripts/finalize.sh
+build:
+    - name: anduin-test-image
+      tag: 1.2.1
+      from: builds
+      auto_clean: true

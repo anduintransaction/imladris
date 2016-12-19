@@ -6,7 +6,6 @@ import (
 	"k8s.io/client-go/1.4/pkg/api"
 	"k8s.io/client-go/1.4/pkg/api/errors"
 	"k8s.io/client-go/1.4/pkg/api/v1"
-	"k8s.io/client-go/1.4/pkg/apis/apps/v1alpha1"
 	v1batch "k8s.io/client-go/1.4/pkg/apis/batch/v1"
 	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/1.4/pkg/labels"
@@ -87,8 +86,6 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Get(name)
 	case "configmap":
 		_, err = kubeClient.Core().ConfigMaps(namespace).Get(name)
-	case "petset":
-		_, err = kubeClient.Apps().PetSets(namespace).Get(name)
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -114,8 +111,6 @@ func createResource(kubeClient *kubernetes.Clientset, kind, namespace string, re
 		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Create(resourceData.(*v1.PersistentVolumeClaim))
 	case "configmap":
 		_, err = kubeClient.Core().ConfigMaps(namespace).Create(resourceData.(*v1.ConfigMap))
-	case "petset":
-		_, err = kubeClient.Apps().PetSets(namespace).Create(resourceData.(*v1alpha1.PetSet))
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -136,8 +131,6 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().PersistentVolumeClaims(namespace).Delete(name, deleteOptions)
 	case "configmap":
 		err = kubeClient.Core().ConfigMaps(namespace).Delete(name, deleteOptions)
-	case "petset":
-		err = kubeClient.Apps().PetSets(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
