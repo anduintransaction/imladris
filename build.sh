@@ -2,7 +2,7 @@
 
 RELEASE=0.2.0
 dist=dist
-bin=anduin-minikube-deploy
+bin=anduin-kube-deploy
 
 function build {
     GOOS=$1 GOARCH=$2 go build -o $bin
