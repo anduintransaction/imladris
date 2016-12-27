@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type appConfig struct {
 	configFile string
 	context    string
 	namespace  string
+	timeout    time.Duration
 	variables  variableMap
 }
 
@@ -43,7 +45,8 @@ func main() {
 	flag.StringVar(&config.configFile, "kubeconfig", "", "Kube config file")
 	flag.StringVar(&config.context, "context", "", "Kube context")
 	flag.StringVar(&config.namespace, "namespace", "", "Kube namespace")
-	flag.Var(&config.variables, "variable", "override variable")
+	flag.DurationVar(&config.timeout, "timeout", 15*time.Minute, "timeout duration")
+	flag.Var(&config.variables, "variable", "override variables")
 	flag.Parse()
 
 	if config.configFile == "" {
@@ -63,6 +66,8 @@ func main() {
 		cmdDown(args[1:], config)
 	case "update":
 		cmdUpdate(args[1:], config)
+	case "wait":
+		cmdWait(args[1:], config)
 	default:
 		printUsage()
 	}

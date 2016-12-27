@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/pkg/api"
@@ -69,7 +71,13 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 		}
 		return err
 	}
-	err = kubeClient.Core().Namespaces().Delete(namespace, &api.DeleteOptions{})
+	for i := 0; i < 10; i++ {
+		err = kubeClient.Core().Namespaces().Delete(namespace, &api.DeleteOptions{})
+		if err == nil {
+			return nil
+		}
+		time.Sleep(5 * time.Second)
+	}
 	return err
 }
 
