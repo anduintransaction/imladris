@@ -189,12 +189,21 @@ func (p *Project) readAssets(rootFolder string, globs []string, defaultGlob stri
 		if err != nil {
 			return nil, err
 		}
-		assets = append(assets, asset)
+		if asset != nil {
+			assets = append(assets, asset)
+		}
 	}
 	return assets, nil
 }
 
 func (p *Project) readAsset(filename string) (*Asset, error) {
+	stat, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+	if stat.IsDir() {
+		return nil, nil
+	}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err

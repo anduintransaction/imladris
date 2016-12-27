@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"strings"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/pkg/api"
@@ -78,7 +80,10 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 		}
 		time.Sleep(5 * time.Second)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace string) (bool, error) {
@@ -108,19 +113,46 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 
 func createResource(kubeClient *kubernetes.Clientset, kind, namespace string, resourceData interface{}) error {
 	var err error
-	switch kind {
-	case "deployment":
-		_, err = kubeClient.Extensions().Deployments(namespace).Create(resourceData.(*v1beta1.Deployment))
-	case "service":
-		_, err = kubeClient.Core().Services(namespace).Create(resourceData.(*v1.Service))
-	case "job":
-		_, err = kubeClient.Batch().Jobs(namespace).Create(resourceData.(*v1batch.Job))
-	case "persistentvolumeclaim":
-		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Create(resourceData.(*v1.PersistentVolumeClaim))
-	case "configmap":
-		_, err = kubeClient.Core().ConfigMaps(namespace).Create(resourceData.(*v1.ConfigMap))
-	default:
-		return UnsupportedResource(kind)
+	retry := 0
+	for {
+		switch kind {
+		case "deployment":
+			_, err = kubeClient.Extensions().Deployments(namespace).Create(resourceData.(*v1beta1.Deployment))
+		case "service":
+			_, err = kubeClient.Core().Services(namespace).Create(resourceData.(*v1.Service))
+		case "job":
+			_, err = kubeClient.Batch().Jobs(namespace).Create(resourceData.(*v1batch.Job))
+		case "persistentvolumeclaim":
+			_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Create(resourceData.(*v1.PersistentVolumeClaim))
+		case "configmap":
+			_, err = kubeClient.Core().ConfigMaps(namespace).Create(resourceData.(*v1.ConfigMap))
+		default:
+			return UnsupportedResource(kind)
+		}
+		if err == nil {
+			return nil
+		}
+		statusErr, ok := err.(*errors.StatusError)
+		if !ok {
+			return err
+		}
+		message := statusErr.Status().Message
+		if strings.Contains(message, "unable to create new content in namespace") && strings.Contains(message, "being terminated") {
+			retry++
+			if retry > 10 {
+				return err
+			}
+			time.Sleep(5 * time.Second)
+			continue
+		} else if strings.Contains(message, "namespaces") && strings.Contains(message, "not found") {
+			err = createNamespace(kubeClient, namespace)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+
 	}
 	return err
 }
