@@ -361,7 +361,7 @@ func (p *Project) createAsset(asset *Asset) error {
 		Println(ColorGreen, "====> Existed")
 		return nil
 	}
-	err = createResource(p.kubeClient, asset.Kind, p.projectConfig.Namespace, asset.ResourceData)
+	err = createResource(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace, asset.ResourceData)
 	if err == nil {
 		Println(ColorGreen, "====> Success")
 	}
@@ -376,7 +376,7 @@ func (p *Project) destroyAsset(asset *Asset) error {
 	if err != nil {
 		return err
 	}
-	if !existed {
+	if !existed && asset.Kind != "pod" {
 		Println(ColorGreen, "====> Not existed")
 		return nil
 	}

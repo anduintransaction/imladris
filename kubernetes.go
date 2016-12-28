@@ -1,11 +1,10 @@
 package main
 
 import (
-	"time"
-
-	"strings"
-
+	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
@@ -68,6 +67,9 @@ func createNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 }
 
 func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
+	if namespace == "default" {
+		return nil
+	}
 	_, err := kubeClient.Core().Namespaces().Get(namespace)
 	if err != nil {
 		if isResourceNotExist(err) {
@@ -91,6 +93,22 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace string) (bool, error) {
 	var err error
 	switch kind {
+	case "pod":
+		pod, err := kubeClient.Core().Pods(namespace).Get(name)
+		if err != nil {
+			if isResourceNotExist(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		switch pod.Status.Phase {
+		case v1.PodUnknown:
+			return false, fmt.Errorf("unknown pod status")
+		case v1.PodSucceeded, v1.PodFailed:
+			return false, nil
+		default:
+			return true, nil
+		}
 	case "deployment":
 		_, err = kubeClient.Extensions().Deployments(namespace).Get(name)
 	case "service":
@@ -113,11 +131,16 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 	return false, err
 }
 
-func createResource(kubeClient *kubernetes.Clientset, kind, namespace string, resourceData interface{}) error {
+func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace string, resourceData interface{}) error {
 	var err error
 	retry := 0
 	for {
 		switch kind {
+		case "pod":
+			// Delete if possible
+			deleteOptions := api.NewDeleteOptions(0)
+			kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
+			_, err = kubeClient.Core().Pods(namespace).Create(resourceData.(*v1.Pod))
 		case "deployment":
 			_, err = kubeClient.Extensions().Deployments(namespace).Create(resourceData.(*v1beta1.Deployment))
 		case "service":
@@ -163,6 +186,8 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 	var err error
 	deleteOptions := api.NewDeleteOptions(0)
 	switch kind {
+	case "pod":
+		return destroyPod(kubeClient, name, namespace)
 	case "deployment":
 		return destroyDeployment(kubeClient, name, namespace)
 	case "service":
@@ -175,6 +200,22 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().ConfigMaps(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
+	}
+	return err
+}
+
+func destroyPod(kubeClient *kubernetes.Clientset, name, namespace string) error {
+	deleteOptions := api.NewDeleteOptions(0)
+	err := kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
+	if err == nil {
+		return nil
+	}
+	statusErr, ok := err.(*errors.StatusError)
+	if !ok {
+		return err
+	}
+	if statusErr.Status().Code == 404 {
+		return nil
 	}
 	return err
 }

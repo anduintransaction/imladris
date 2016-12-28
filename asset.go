@@ -41,6 +41,8 @@ func (asset *Asset) parseResource(data []byte) error {
 	buf := bytes.NewReader(data)
 	decoder := kubeyaml.NewYAMLOrJSONDecoder(buf, 1024)
 	switch asset.Kind {
+	case "pod":
+		asset.ResourceData = &v1.Pod{}
 	case "deployment":
 		asset.ResourceData = &v1beta1.Deployment{}
 	case "service":
