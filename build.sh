@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RELEASE=0.3.1
+RELEASE=0.4.0
 dist=dist
 bin=anduin-kube-deploy
 

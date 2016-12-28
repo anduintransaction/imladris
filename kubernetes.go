@@ -5,6 +5,8 @@ import (
 
 	"strings"
 
+	"io"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
 	"k8s.io/client-go/1.4/pkg/api"
@@ -225,6 +227,25 @@ func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error 
 		}
 	}
 	return nil
+}
+
+func getLogFromPod(kubeClient *kubernetes.Clientset, namespace, podName string, follow bool) (io.ReadCloser, error) {
+	var stream io.ReadCloser
+	var err error
+	for {
+		stream, err = kubeClient.Core().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{
+			Follow: follow,
+		}).Stream()
+		if err == nil {
+			break
+		}
+		if strings.Contains(err.Error(), "ContainerCreating") {
+			time.Sleep(time.Second)
+		} else {
+			return nil, err
+		}
+	}
+	return stream, nil
 }
 
 func isResourceNotExist(err error) bool {
