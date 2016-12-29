@@ -228,8 +228,9 @@ func (p *Project) readAsset(filename string) (*Asset, error) {
 
 func (p *Project) runScripts(scripts []string) error {
 	for _, script := range scripts {
-		script = translateFilePath(p.projectConfig.RootFolder, script)
+		Printf(ColorYellow, "Running script %q\n", script)
 		cmd := exec.Command("sh", "-c", script)
+		cmd.Dir = p.projectConfig.RootFolder
 		output, err := cmd.CombinedOutput()
 		fmt.Print(string(output))
 		if err != nil {
