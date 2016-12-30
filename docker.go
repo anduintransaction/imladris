@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -16,13 +17,13 @@ func checkDockerCommand() error {
 func dockerBuildImage(buildContext, tag string) error {
 	Printf(ColorYellow, "Building docker image %q in %q\n", tag, buildContext)
 	cmd := exec.Command("docker", "build", "-t", tag, buildContext)
-	errBuffer := &bytes.Buffer{}
-	cmd.Stderr = errBuffer
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err == nil {
 		return nil
 	}
-	return errors.New(errBuffer.String())
+	return errors.New("cannot build docker image")
 }
 
 func dockerLogin(rootFolder string, credential *DockerCredential) error {
