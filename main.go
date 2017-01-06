@@ -70,6 +70,8 @@ func main() {
 		cmdWait(args[1:], config)
 	case "log":
 		cmdLog(args[1:], config)
+	case "data":
+		cmdData(args[1:], config)
 	default:
 		printUsage()
 	}

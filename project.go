@@ -91,7 +91,7 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 	}
 	p.projectConfig.Variables["app_var_namespace"] = p.projectConfig.Namespace
 	p.projectConfig.Variables["app_var_home"] = os.Getenv("HOME")
-	p.projectConfig.Variables["app_data_dir"] = "/data"
+	p.projectConfig.Variables["app_data_dir"] = dataPath
 
 	// Read build info
 	err = p.readBuild()

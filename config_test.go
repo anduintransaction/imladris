@@ -20,7 +20,7 @@ func TestDefaultVariables(t *testing.T) {
 	projectConfig := project.projectConfig
 	req.Equal(projectConfig.Variables, map[string]string{
 		"app_var_home":      os.Getenv("HOME"),
-		"app_data_dir":      "/data",
+		"app_data_dir":      dataPath,
 		"app_var_namespace": "default",
 	})
 }
