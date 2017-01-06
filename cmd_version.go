@@ -3,5 +3,5 @@ package main
 import "fmt"
 
 func cmdVersion(args []string, config *appConfig) {
-	fmt.Println("0.5.3")
+	fmt.Println("0.5.4")
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"io"
 
@@ -142,6 +143,8 @@ func (l *logFollower) followLog(kubeClient *kubernetes.Clientset, namespace, pod
 			event := <-l.eventChan
 			switch event {
 			case logFollowerEventClose:
+				// wait a bit
+				time.Sleep(5 * time.Second)
 				stream.Close()
 			case logFollowerEventStart:
 				stream, err = getLogFromPod(kubeClient, namespace, podName, true)
