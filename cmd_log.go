@@ -76,8 +76,7 @@ func cmdLog(args []string, config *appConfig) {
 		}
 		watchedPod, ok := event.Object.(*v1.Pod)
 		if !ok {
-			ErrPrintln(ColorRed, "Cannot decode pod")
-			os.Exit(1)
+			continue
 		}
 		for _, status := range watchedPod.Status.ContainerStatuses {
 			if status.State.Terminated != nil {
