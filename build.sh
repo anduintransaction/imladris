@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-RELEASE=0.5.5
+RELEASE=0.5.6
 dist=dist
-bin=anduin-kube-deploy
+bin=imladris
 
 function build {
     GOOS=$1 GOARCH=$2 go build -o $bin
