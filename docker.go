@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -68,7 +69,12 @@ func dockerRmi(name string) error {
 			return nil
 		}
 		stdErr = errBuffer.String()
-		time.Sleep(5 * time.Second)
+		if strings.Contains(stdErr, "must force") {
+			time.Sleep(5 * time.Second)
+			continue
+		} else {
+			return errors.New(stdErr)
+		}
 	}
 	return errors.New(stdErr)
 }
