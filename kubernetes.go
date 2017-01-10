@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/1.4/pkg/api/v1"
 	v1batch "k8s.io/client-go/1.4/pkg/apis/batch/v1"
 	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/1.4/pkg/fields"
 	"k8s.io/client-go/1.4/pkg/labels"
 	"k8s.io/client-go/1.4/tools/clientcmd"
 )
@@ -287,6 +288,31 @@ func getLogFromPod(kubeClient *kubernetes.Clientset, namespace, podName string, 
 		}
 	}
 	return stream, nil
+}
+
+func getEvents(kubeClient *kubernetes.Clientset, namespace, podName string) ([]v1.Event, error) {
+	selector, err := fields.ParseSelector("involvedObject.name=" + podName)
+	if err != nil {
+		return nil, err
+	}
+	events, err := kubeClient.Core().Events(namespace).List(api.ListOptions{
+		FieldSelector: selector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return events.Items, err
+}
+
+func getLastEvent(kubeClient *kubernetes.Clientset, namespace, podName string) (*v1.Event, error) {
+	events, err := getEvents(kubeClient, namespace, podName)
+	if err != nil {
+		return nil, err
+	}
+	if len(events) == 0 {
+		return nil, fmt.Errorf("no event found")
+	}
+	return &events[len(events)-1], nil
 }
 
 func isResourceNotExist(err error) bool {

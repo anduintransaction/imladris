@@ -59,7 +59,7 @@ func dockerLogin(rootFolder string, credential *DockerCredential) error {
 func dockerRmi(name string) error {
 	Printf(ColorYellow, "Auto clean image %s\n", name)
 	var stdErr string
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		cmd := exec.Command("docker", "rmi", name)
 		errBuffer := &bytes.Buffer{}
 		cmd.Stderr = errBuffer

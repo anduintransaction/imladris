@@ -49,6 +49,12 @@ func cmdLog(args []string, config *appConfig) {
 		if pod.Status.Phase == v1.PodSucceeded {
 			os.Exit(0)
 		}
+		lastEvent, err := getLastEvent(clientset, namespace, podName)
+		if err != nil {
+			ErrPrintln(ColorRed, err)
+		} else {
+			ErrPrintln(ColorRed, lastEvent.Message)
+		}
 		os.Exit(1)
 	}
 	selector, err := fields.ParseSelector("metadata.name=" + podName)
@@ -72,6 +78,7 @@ func cmdLog(args []string, config *appConfig) {
 	for {
 		event := <-watcher.ResultChan()
 		if event.Type == watch.Deleted {
+			ErrPrintln(ColorRed, "Pod was deleted")
 			os.Exit(1)
 		}
 		watchedPod, ok := event.Object.(*v1.Pod)
@@ -87,6 +94,12 @@ func cmdLog(args []string, config *appConfig) {
 				case v1.PodSucceeded:
 					os.Exit(0)
 				case v1.PodFailed:
+					lastEvent, err := getLastEvent(clientset, namespace, podName)
+					if err != nil {
+						ErrPrintln(ColorRed, err)
+					} else {
+						ErrPrintln(ColorRed, lastEvent.Message)
+					}
 					os.Exit(1)
 				}
 				l.close()
