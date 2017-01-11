@@ -48,10 +48,14 @@ func cmdWait(args []string, config *appConfig) {
 		os.Exit(1)
 	}
 	timer := time.NewTimer(config.timeout)
+	poller := time.NewTicker(time.Minute)
+	pollErrorCount := 0
 	for {
+		var job *v1batch.Job
 		select {
 		case event := <-watcher.ResultChan():
-			job, ok := event.Object.(*v1batch.Job)
+			var ok bool
+			job, ok = event.Object.(*v1batch.Job)
 			if !ok {
 				ErrPrintln(ColorRed, "Cannot decode job")
 				os.Exit(1)
@@ -60,12 +64,21 @@ func cmdWait(args []string, config *appConfig) {
 				ErrPrintln(ColorRed, "Job was deleted")
 				os.Exit(1)
 			}
-			checkJobStatus(job)
 		case <-timer.C:
 			ErrPrintln(ColorRed, "Timeout while waiting for job events")
 			os.Exit(1)
+		case <-poller.C:
+			job, err = clientset.Batch().Jobs(namespace).Get(jobName)
+			if err != nil {
+				pollErrorCount++
+				if pollErrorCount < 5 {
+					continue
+				}
+				ErrPrintln(ColorRed, err)
+				os.Exit(1)
+			}
 		}
-
+		checkJobStatus(job)
 	}
 }
 

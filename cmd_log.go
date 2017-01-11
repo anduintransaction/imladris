@@ -75,15 +75,31 @@ func cmdLog(args []string, config *appConfig) {
 		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
+	poller := time.NewTicker(time.Minute)
+	pollErrorCount := 0
 	for {
-		event := <-watcher.ResultChan()
-		if event.Type == watch.Deleted {
-			ErrPrintln(ColorRed, "Pod was deleted")
-			os.Exit(1)
-		}
-		watchedPod, ok := event.Object.(*v1.Pod)
-		if !ok {
-			continue
+		var watchedPod *v1.Pod
+		select {
+		case event := <-watcher.ResultChan():
+			if event.Type == watch.Deleted {
+				ErrPrintln(ColorRed, "Pod was deleted")
+				os.Exit(1)
+			}
+			var ok bool
+			watchedPod, ok = event.Object.(*v1.Pod)
+			if !ok {
+				continue
+			}
+		case <-poller.C:
+			watchedPod, err = clientset.Core().Pods(namespace).Get(podName)
+			if err != nil {
+				pollErrorCount++
+				if pollErrorCount < 5 {
+					continue
+				}
+				ErrPrintln(ColorRed, err)
+				os.Exit(1)
+			}
 		}
 		for _, status := range watchedPod.Status.ContainerStatuses {
 			if status.State.Terminated != nil {
