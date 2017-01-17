@@ -41,12 +41,13 @@ type ProjectConfig struct {
 }
 
 type ProjectBuild struct {
-	Name      string `yaml:"name"`
-	VarName   string `yaml:"var_name"`
-	Tag       string `yaml:"tag"`
-	From      string `yaml:"from"`
-	Push      bool   `yaml:"push"`
-	AutoClean bool   `yaml:"auto_clean"`
+	Name       string `yaml:"name"`
+	VarName    string `yaml:"var_name"`
+	Tag        string `yaml:"tag"`
+	From       string `yaml:"from"`
+	Push       bool   `yaml:"push"`
+	PushLatest bool   `yaml:"push_latest"`
+	AutoClean  bool   `yaml:"auto_clean"`
 }
 
 type DockerCredential struct {
@@ -357,7 +358,7 @@ func (p *Project) buildDockerImage(build *ProjectBuild) error {
 	if !build.Push {
 		return nil
 	}
-	return dockerPush(tagName)
+	return dockerPush(tagName, build.PushLatest)
 }
 
 func (p *Project) Down() error {
@@ -393,6 +394,13 @@ func (p *Project) Down() error {
 			if err != nil {
 				// Bail error here
 				ErrPrintln(ColorRed, err)
+			}
+			if build.PushLatest {
+				err = dockerRmi(build.Name + ":latest")
+				if err != nil {
+					// Also Bail error here
+					ErrPrintln(ColorRed, err)
+				}
 			}
 		}
 	}

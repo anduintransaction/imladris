@@ -107,15 +107,46 @@ func dockerPull(name string) error {
 	return errors.New(errBuffer.String())
 }
 
-func dockerPush(name string) error {
+func dockerPush(name string, pushLatest bool) error {
+	err := doDockerPush(name)
+	if err != nil {
+		return err
+	}
+	if !pushLatest {
+		return nil
+	}
+	pieces := strings.Split(name, ":")
+	imageName := pieces[0]
+	latestImage := imageName + ":latest"
+	err = dockerTag(name, latestImage)
+	if err != nil {
+		return err
+	}
+	return doDockerPush(latestImage)
+}
+
+func doDockerPush(name string) error {
 	Printf(ColorYellow, "Pushing image %s\n", name)
 	cmd := exec.Command("docker", "push", name)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()
-	if err == nil {
-		return err
+	if err != nil {
+		return errors.New(errBuffer.String())
 	}
-	return errors.New(errBuffer.String())
+	return nil
+}
+
+func dockerTag(name, alias string) error {
+	Printf(ColorYellow, "Tagging %q as %q", name, alias)
+	cmd := exec.Command("docker", "tag", name, alias)
+	errBuffer := &bytes.Buffer{}
+	cmd.Stderr = errBuffer
+	cmd.Stdout = os.Stdout
+	err := cmd.Run()
+	if err != nil {
+		return errors.New(errBuffer.String())
+	}
+	return nil
 }
