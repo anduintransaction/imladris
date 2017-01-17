@@ -79,11 +79,40 @@ func dockerRmi(name string) error {
 	return errors.New(stdErr)
 }
 
+func dockerImageExistLocally(name string) bool {
+	cmd := exec.Command("docker", "images", name)
+	buff := &bytes.Buffer{}
+	cmd.Stdout = buff
+	cmd.Run()
+	pieces := strings.Split(name, ":")
+	if strings.Contains(buff.String(), pieces[0]) {
+		return true
+	}
+	return false
+}
+
+func dockerPull(name string) error {
+	if dockerImageExistLocally(name) {
+		return nil
+	}
+	Printf(ColorYellow, "Pulling image %s\n", name)
+	cmd := exec.Command("docker", "pull", name)
+	errBuffer := &bytes.Buffer{}
+	cmd.Stderr = errBuffer
+	cmd.Stdout = os.Stdout
+	err := cmd.Run()
+	if err == nil {
+		return err
+	}
+	return errors.New(errBuffer.String())
+}
+
 func dockerPush(name string) error {
 	Printf(ColorYellow, "Pushing image %s\n", name)
 	cmd := exec.Command("docker", "push", name)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
+	cmd.Stdout = os.Stdout
 	err := cmd.Run()
 	if err == nil {
 		return err

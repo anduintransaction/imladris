@@ -1,19 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"io/ioutil"
-
-	"path/filepath"
-
 	"bytes"
-	"text/template"
-
-	"regexp"
-
+	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"text/template"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/1.4/kubernetes"
@@ -30,6 +26,7 @@ type Project struct {
 
 type ProjectConfig struct {
 	RootFolder   string              `yaml:"root_folder"`
+	Pulls        []string            `yaml:"pulls"`
 	InitUp       []string            `yaml:"init_up"`
 	InitDown     []string            `yaml:"init_down"`
 	FinalizeUp   []string            `yaml:"finalize_up"`
@@ -252,6 +249,12 @@ func (p *Project) dockerLogin() error {
 }
 
 func (p *Project) Up() error {
+	if len(p.projectConfig.Pulls) > 0 {
+		err := p.pullImages()
+		if err != nil {
+			return err
+		}
+	}
 	err := p.runScripts(p.projectConfig.InitUp)
 	if err != nil {
 		return err
@@ -287,6 +290,51 @@ func (p *Project) Up() error {
 		}
 	}
 	return p.runScripts(p.projectConfig.FinalizeUp)
+}
+
+func (p *Project) pullImages() error {
+	imagesToPull := make(map[string]struct{})
+	for _, imageName := range p.projectConfig.Pulls {
+		imagesToPull[imageName] = struct{}{}
+	}
+	for _, resource := range p.resources {
+		err := p.pullImage(resource, imagesToPull)
+		if err != nil {
+			return err
+		}
+	}
+	for _, job := range p.jobs {
+		err := p.pullImage(job, imagesToPull)
+		if err != nil {
+			return err
+		}
+	}
+	for _, service := range p.services {
+		err := p.pullImage(service, imagesToPull)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Project) pullImage(asset *Asset, imagesToPull map[string]struct{}) error {
+	images, err := getResourceImages(asset.Kind, asset.ResourceData)
+	if err != nil {
+		return err
+	}
+	for _, image := range images {
+		pieces := strings.Split(image, ":")
+		imageName := pieces[0]
+		_, ok := imagesToPull[imageName]
+		if ok {
+			err = dockerPull(image)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (p *Project) build() error {
