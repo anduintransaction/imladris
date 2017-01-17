@@ -395,7 +395,7 @@ func (p *Project) Down() error {
 				// Bail error here
 				ErrPrintln(ColorRed, err)
 			}
-			if build.PushLatest {
+			if build.Push && build.PushLatest {
 				err = dockerRmi(build.Name + ":latest")
 				if err != nil {
 					// Also Bail error here
