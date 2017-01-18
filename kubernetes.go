@@ -120,6 +120,8 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Get(name)
 	case "configmap":
 		_, err = kubeClient.Core().ConfigMaps(namespace).Get(name)
+	case "secret":
+		_, err = kubeClient.Core().Secrets(namespace).Get(name)
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -152,6 +154,8 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 			_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Create(resourceData.(*v1.PersistentVolumeClaim))
 		case "configmap":
 			_, err = kubeClient.Core().ConfigMaps(namespace).Create(resourceData.(*v1.ConfigMap))
+		case "secret":
+			_, err = kubeClient.Core().Secrets(namespace).Create(resourceData.(*v1.Secret))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -199,6 +203,8 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().PersistentVolumeClaims(namespace).Delete(name, deleteOptions)
 	case "configmap":
 		err = kubeClient.Core().ConfigMaps(namespace).Delete(name, deleteOptions)
+	case "secret":
+		err = kubeClient.Core().Secrets(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -214,7 +220,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 		containers = resourceData.(*v1beta1.Deployment).Spec.Template.Spec.Containers
 	case "job":
 		containers = resourceData.(*v1batch.Job).Spec.Template.Spec.Containers
-	case "service", "persistentvolumeclaim", "configmap":
+	case "service", "persistentvolumeclaim", "configmap", "secret":
 		return nil, nil
 	default:
 		return nil, UnsupportedResource(kind)

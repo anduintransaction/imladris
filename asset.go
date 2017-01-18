@@ -53,6 +53,8 @@ func (asset *Asset) parseResource(data []byte) error {
 		asset.ResourceData = &v1.PersistentVolumeClaim{}
 	case "configmap":
 		asset.ResourceData = &v1.ConfigMap{}
+	case "secret":
+		asset.ResourceData = &v1.Secret{}
 	default:
 		return UnsupportedResource(asset.Kind)
 	}
