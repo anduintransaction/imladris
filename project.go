@@ -22,6 +22,7 @@ type Project struct {
 	resources     []*Asset
 	services      []*Asset
 	jobs          []*Asset
+	excludes      map[string]struct{}
 }
 
 type ProjectConfig struct {
@@ -34,6 +35,7 @@ type ProjectConfig struct {
 	Services     []string            `yaml:"services"`
 	Jobs         []string            `yaml:"jobs"`
 	Resources    []string            `yaml:"resources"`
+	Excludes     []string            `yaml:"excludes"`
 	Namespace    string              `yaml:"namespace"`
 	Variables    map[string]string   `yaml:"variables"`
 	Build        []*ProjectBuild     `yaml:"build"`
@@ -94,6 +96,12 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 
 	// Read build info
 	err = p.readBuild()
+	if err != nil {
+		return nil, err
+	}
+
+	// Read excludes
+	err = p.readExcludes()
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +177,21 @@ func (p *Project) readBuild() error {
 	return nil
 }
 
+func (p *Project) readExcludes() error {
+	p.excludes = make(map[string]struct{})
+	for _, glob := range p.projectConfig.Excludes {
+		glob = translateFilePath(p.projectConfig.RootFolder, glob)
+		excludes, err := filepath.Glob(glob)
+		if err != nil {
+			return err
+		}
+		for _, exclude := range excludes {
+			p.excludes[exclude] = struct{}{}
+		}
+	}
+	return nil
+}
+
 func (p *Project) readAssets(rootFolder string, globs []string, defaultGlob string) ([]*Asset, error) {
 	if len(globs) == 0 {
 		globs = []string{defaultGlob}
@@ -184,6 +207,10 @@ func (p *Project) readAssets(rootFolder string, globs []string, defaultGlob stri
 	}
 	assets := []*Asset{}
 	for _, filename := range assetFiles {
+		_, ok := p.excludes[filename]
+		if ok {
+			continue
+		}
 		asset, err := p.readAsset(filename)
 		if err != nil {
 			return nil, err
