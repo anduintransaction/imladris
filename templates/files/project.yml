@@ -1,0 +1,33 @@
+root_folder: .
+namespace: [namespace]
+init_up:
+  - [initup]
+init_down:
+  - [init_down]
+finalize_up:
+  - [finalize_up]
+finalize_down:
+  - [finalize_down]
+excludes:
+  - [excludes]
+resources:
+  - resources/*.yml
+services:
+  - services/*.yml
+jobs:
+  - jobs/*.yml
+variables:
+    var1: value1
+build:
+    - name: [image_name]
+      tag: [image_tag]
+      from: [build_dir]
+      var_name: [var_name]
+      push: false
+      push_latest: false
+      auto_clean: false
+credentials:
+  - host: index.docker.io
+    username: [username]
+    password: [password]
+    password_file: [password_file]

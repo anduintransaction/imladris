@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RELEASE=0.6.4
+RELEASE=0.7.0
 dist=dist
 bin=imladris
 
@@ -13,5 +13,6 @@ function build {
 }
 
 mkdir -p $dist
+go generate
 build darwin amd64
 build linux amd64

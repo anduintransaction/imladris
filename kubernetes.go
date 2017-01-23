@@ -211,6 +211,29 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 	return err
 }
 
+func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace string, resourceData interface{}) error {
+	var err error
+	switch kind {
+	case "pod":
+		_, err = kubeClient.Core().Pods(namespace).Update(resourceData.(*v1.Pod))
+	case "deployment":
+		_, err = kubeClient.Extensions().Deployments(namespace).Update(resourceData.(*v1beta1.Deployment))
+	case "service":
+		_, err = kubeClient.Core().Services(namespace).Update(resourceData.(*v1.Service))
+	case "job":
+		return nil
+	case "persistentvolumeclaim":
+		return nil
+	case "configmap":
+		_, err = kubeClient.Core().ConfigMaps(namespace).Update(resourceData.(*v1.ConfigMap))
+	case "secret":
+		return nil
+	default:
+		return UnsupportedResource(kind)
+	}
+	return err
+}
+
 func getResourceImages(kind string, resourceData interface{}) ([]string, error) {
 	var containers []v1.Container
 	switch kind {

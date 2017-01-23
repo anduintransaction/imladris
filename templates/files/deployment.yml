@@ -1,0 +1,46 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: [deployment_name]
+spec:
+  replicas: [deployment_replica]
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      labels:
+        name: [deployment_name]
+    spec:      
+      activeDeadlineSeconds: [ads]
+      imagePullSecrets:
+        - [secret]
+      containers:
+        - name: [container_name]
+          image: [container_image]
+          args:
+            - [ARGS]
+          command:
+            - [COMMAND]
+          livenessProbe:
+            httpGet:
+              path: /
+              port: [health_port]
+            initialDelaySeconds: 120
+            timeoutSeconds: 30
+          env:
+            - name: [ENV_NAME]
+              valueFrom:
+                configMapKeyRef:
+                  name: [config_name]
+                  key: [config_key]
+            - name: [ENV_NAME]
+              value: [ENV_VALUE]
+          volumeMounts:
+            - mountPath: [mount_path]
+              name: [mount_name]
+      volumes:
+        - name: [mount_name]
+          persistentVolumeClaim:
+            claimName: [claim_name]
+        - name: [mount_name]
+          hostPath:
+            path: [path]

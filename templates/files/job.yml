@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: [job_name]
+spec:
+  template:
+    spec:
+      restartPolicy: Never      
+      imagePullSecrets:
+        - [secret]
+      containers:
+        - name: [container_name]
+          image: [container_image]
+          args:
+            - ARGS
+          command:
+            - COMMAND
+          env:
+            - name: [ENV_NAME]
+              valueFrom:
+                configMapKeyRef:
+                  name: [config_name]
+                  key: [config_key]
+            - name: [ENV_NAME]
+              value: [ENV_VALUE]
+          volumeMounts:
+            - mountPath: [mount_path]
+              name: [mount_name]
+      volumes:
+        - name: [mount_name]
+          persistentVolumeClaim:
+            claimName: [claim_name]
+        - name: [mount_name]
+          hostPath:
+            path: [path]

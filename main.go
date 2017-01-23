@@ -72,6 +72,8 @@ func main() {
 		cmdLog(args[1:], config)
 	case "data":
 		cmdData(args[1:], config)
+	case "generate":
+		cmdGenerate(args[1:], config)
 	default:
 		printUsage()
 	}
@@ -79,7 +81,7 @@ func main() {
 
 func printUsage() {
 	ErrPrintf(ColorWhite, "USAGE: %s <flag> [command] <folder>\n", os.Args[0])
-	ErrPrintf(ColorWhite, "Available commands: up, down, update, version\n")
+	ErrPrintf(ColorWhite, "Available commands: up, down, update, version, wait, log, data, generate\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }

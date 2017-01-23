@@ -471,3 +471,66 @@ func (p *Project) destroyAsset(asset *Asset) error {
 	}
 	return err
 }
+
+func (p *Project) Update() error {
+	if len(p.projectConfig.Pulls) > 0 {
+		err := p.pullImages()
+		if err != nil {
+			return err
+		}
+	}
+	err := p.runScripts(p.projectConfig.InitUp)
+	if err != nil {
+		return err
+	}
+	err = p.dockerLogin()
+	if err != nil {
+		return err
+	}
+	err = p.build()
+	if err != nil {
+		return err
+	}
+	err = createNamespace(p.kubeClient, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
+	for _, resource := range p.resources {
+		err := p.updateAsset(resource)
+		if err != nil {
+			return err
+		}
+	}
+	for _, job := range p.jobs {
+		err := p.updateAsset(job)
+		if err != nil {
+			return err
+		}
+	}
+	for _, service := range p.services {
+		err := p.updateAsset(service)
+		if err != nil {
+			return err
+		}
+	}
+	return p.runScripts(p.projectConfig.FinalizeUp)
+}
+
+func (p *Project) updateAsset(asset *Asset) error {
+	objectMeta := asset.ResourceData.(Meta)
+	assetName := objectMeta.GetName()
+	Printf(ColorYellow, "Updating %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
+	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
+	if !existed {
+		Println(ColorGreen, "====> Not existed")
+		return nil
+	}
+	err = updateResource(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace, asset.ResourceData)
+	if err == nil {
+		Println(ColorGreen, "====> Success")
+	}
+	return err
+}

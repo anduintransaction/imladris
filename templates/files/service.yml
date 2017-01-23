@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: [service_name]
+spec:
+  ports:
+    - port: [port]
+      name: [name]
+      protocol: TCP
+      targetPort: [port]
+  selector:
+    name: [service_name]
