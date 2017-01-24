@@ -281,19 +281,14 @@ func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string)
 	if err != nil {
 		return err
 	}
-	replicaSets, err := kubeClient.Extensions().ReplicaSets(namespace).List(api.ListOptions{
+	listOptions := api.ListOptions{
 		LabelSelector: selector,
-	})
+	}
+	err = kubeClient.Extensions().ReplicaSets(namespace).DeleteCollection(deleteOptions, listOptions)
 	if err != nil {
 		return err
 	}
-	for _, replicaSet := range replicaSets.Items {
-		err = kubeClient.Extensions().ReplicaSets(namespace).Delete(replicaSet.Name, deleteOptions)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
 }
 
 func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error {

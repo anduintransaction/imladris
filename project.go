@@ -26,20 +26,21 @@ type Project struct {
 }
 
 type ProjectConfig struct {
-	RootFolder   string              `yaml:"root_folder"`
-	Pulls        []string            `yaml:"pulls"`
-	InitUp       []string            `yaml:"init_up"`
-	InitDown     []string            `yaml:"init_down"`
-	FinalizeUp   []string            `yaml:"finalize_up"`
-	FinalizeDown []string            `yaml:"finalize_down"`
-	Services     []string            `yaml:"services"`
-	Jobs         []string            `yaml:"jobs"`
-	Resources    []string            `yaml:"resources"`
-	Excludes     []string            `yaml:"excludes"`
-	Namespace    string              `yaml:"namespace"`
-	Variables    map[string]string   `yaml:"variables"`
-	Build        []*ProjectBuild     `yaml:"build"`
-	Credentials  []*DockerCredential `yaml:"credentials"`
+	RootFolder      string              `yaml:"root_folder"`
+	Pulls           []string            `yaml:"pulls"`
+	InitUp          []string            `yaml:"init_up"`
+	InitDown        []string            `yaml:"init_down"`
+	FinalizeUp      []string            `yaml:"finalize_up"`
+	FinalizeDown    []string            `yaml:"finalize_down"`
+	Services        []string            `yaml:"services"`
+	Jobs            []string            `yaml:"jobs"`
+	Resources       []string            `yaml:"resources"`
+	Excludes        []string            `yaml:"excludes"`
+	Namespace       string              `yaml:"namespace"`
+	Variables       map[string]string   `yaml:"variables"`
+	Build           []*ProjectBuild     `yaml:"build"`
+	Credentials     []*DockerCredential `yaml:"credentials"`
+	DeleteNamespace bool                `yaml:"delete_namespace"`
 }
 
 type ProjectBuild struct {
@@ -411,9 +412,11 @@ func (p *Project) Down() error {
 			return err
 		}
 	}
-	err = deleteNamespace(p.kubeClient, p.projectConfig.Namespace)
-	if err != nil {
-		return err
+	if p.projectConfig.DeleteNamespace {
+		err = deleteNamespace(p.kubeClient, p.projectConfig.Namespace)
+		if err != nil {
+			return err
+		}
 	}
 	for _, build := range p.projectConfig.Build {
 		if build.AutoClean {
