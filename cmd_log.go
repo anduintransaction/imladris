@@ -3,15 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
-	"io"
-
 	"k8s.io/client-go/1.4/kubernetes"
-	"k8s.io/client-go/1.4/pkg/api"
 	"k8s.io/client-go/1.4/pkg/api/v1"
-	"k8s.io/client-go/1.4/pkg/fields"
-	"k8s.io/client-go/1.4/pkg/watch"
 )
 
 func cmdLog(args []string, config *appConfig) {
@@ -29,160 +25,82 @@ func cmdLog(args []string, config *appConfig) {
 		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
-	pod, err := clientset.Core().Pods(namespace).Get(podName)
-	if err != nil {
-		ErrPrintln(ColorRed, err)
-		os.Exit(1)
+
+	tail := "-1"
+	for {
+		tailPodLog(clientset, podName, namespace, config.context, tail)
+
+		// Check pod exit Status
+		waitExit := 0
+	wait_exit:
+		for {
+			pod, err := clientset.Core().Pods(namespace).Get(podName)
+			if err != nil {
+				ErrPrintln(ColorRed, err)
+				os.Exit(1)
+			}
+
+			switch pod.Status.Phase {
+			case v1.PodSucceeded:
+				os.Exit(0)
+			case v1.PodFailed:
+				ErrPrintln(ColorRed, "Pod failed: ", pod.Status.ContainerStatuses[0].State.Terminated.Reason)
+				os.Exit(1)
+			case v1.PodRunning, v1.PodPending:
+				waitExit++
+				if waitExit <= 5 {
+					time.Sleep(time.Second)
+				} else {
+					containerStatus := pod.Status.ContainerStatuses[0]
+					fmt.Println(containerStatus)
+					if containerStatus.State.Terminated != nil {
+						os.Exit(int(containerStatus.State.Terminated.ExitCode))
+					}
+					ErrPrintln(ColorRed, "Log stream quited while pod still running")
+					ErrPrintln(ColorRed, "Restart log stream, some log lines may be lost")
+					waitExit = 0
+					tail = "1"
+					break wait_exit
+				}
+			default:
+				ErrPrintln(ColorRed, "Unknown pod phase")
+				os.Exit(1)
+			}
+		}
 	}
-	if pod.Status.Phase == v1.PodUnknown {
-		ErrPrintln(ColorRed, "Unknown pod status")
-		os.Exit(1)
-	}
-	if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
-		stream, err := getLogFromPod(clientset, namespace, podName, false)
+
+}
+
+func tailPodLog(clientset *kubernetes.Clientset, podName, namespace, context, tail string) {
+	// Wait for pod running
+wait_running:
+	for {
+		pod, err := clientset.Core().Pods(namespace).Get(podName)
 		if err != nil {
 			ErrPrintln(ColorRed, err)
 			os.Exit(1)
 		}
-		defer stream.Close()
-		io.Copy(os.Stdout, stream)
-		if pod.Status.Phase == v1.PodSucceeded {
-			os.Exit(0)
+		switch pod.Status.Phase {
+		case v1.PodUnknown:
+			ErrPrintln(ColorRed, "Unknown pod phase")
+			os.Exit(1)
+		case v1.PodPending:
+			time.Sleep(2 * time.Second)
+		default:
+			break wait_running
 		}
-		lastEvent, err := getLastEvent(clientset, namespace, podName)
-		if err != nil {
-			ErrPrintln(ColorRed, err)
-		} else {
-			ErrPrintln(ColorRed, lastEvent.Message)
-		}
-		os.Exit(1)
 	}
-	selector, err := fields.ParseSelector("metadata.name=" + podName)
+	var cmd *exec.Cmd
+	if context == "" {
+		cmd = exec.Command("kubectl", "logs", "-f", "--tail", tail, podName, "--namespace", namespace)
+	} else {
+		cmd = exec.Command("kubectl", "logs", "-f", "--tail", tail, podName, "--namespace", namespace, "--context", context)
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
 	if err != nil {
 		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
-	watcher, err := clientset.Core().Pods(namespace).Watch(api.ListOptions{
-		FieldSelector: selector,
-	})
-	if err != nil {
-		ErrPrintln(ColorRed, err)
-		os.Exit(1)
-	}
-	l := newLogFollower()
-	err = l.followLog(clientset, namespace, podName)
-	if err != nil {
-		ErrPrintln(ColorRed, err)
-		os.Exit(1)
-	}
-	poller := time.NewTicker(time.Minute)
-	pollErrorCount := 0
-	for {
-		var watchedPod *v1.Pod
-		select {
-		case event := <-watcher.ResultChan():
-			if event.Type == watch.Deleted {
-				ErrPrintln(ColorRed, "Pod was deleted")
-				os.Exit(1)
-			}
-			var ok bool
-			watchedPod, ok = event.Object.(*v1.Pod)
-			if !ok {
-				continue
-			}
-		case <-poller.C:
-			watchedPod, err = clientset.Core().Pods(namespace).Get(podName)
-			if err != nil {
-				pollErrorCount++
-				if pollErrorCount < 5 {
-					continue
-				}
-				ErrPrintln(ColorRed, err)
-				os.Exit(1)
-			}
-		}
-		for _, status := range watchedPod.Status.ContainerStatuses {
-			if status.State.Terminated != nil {
-				switch watchedPod.Status.Phase {
-				case v1.PodUnknown:
-					ErrPrintln(ColorRed, "Unknown pod status")
-					os.Exit(1)
-				case v1.PodSucceeded:
-					os.Exit(0)
-				case v1.PodFailed:
-					lastEvent, err := getLastEvent(clientset, namespace, podName)
-					if err != nil {
-						ErrPrintln(ColorRed, err)
-					} else {
-						ErrPrintln(ColorRed, lastEvent.Message)
-					}
-					os.Exit(1)
-				}
-				l.close()
-				break
-			} else if status.State.Running != nil {
-				l.start()
-			}
-		}
-	}
-}
-
-type logFollowerEvent int
-
-const (
-	logFollowerEventStart logFollowerEvent = 1
-	logFollowerEventClose logFollowerEvent = 2
-)
-
-type logFollower struct {
-	eventChan chan logFollowerEvent
-	lastEvent logFollowerEvent
-}
-
-func newLogFollower() *logFollower {
-	return &logFollower{
-		eventChan: make(chan logFollowerEvent),
-		lastEvent: logFollowerEventStart,
-	}
-}
-
-func (l *logFollower) start() {
-	if l.lastEvent != logFollowerEventStart {
-		l.lastEvent = logFollowerEventStart
-		l.eventChan <- logFollowerEventStart
-	}
-}
-
-func (l *logFollower) close() {
-	if l.lastEvent != logFollowerEventClose {
-		l.lastEvent = logFollowerEventClose
-		l.eventChan <- logFollowerEventClose
-	}
-}
-
-func (l *logFollower) followLog(kubeClient *kubernetes.Clientset, namespace, podName string) error {
-	stream, err := getLogFromPod(kubeClient, namespace, podName, true)
-	if err != nil {
-		return err
-	}
-	go io.Copy(os.Stdout, stream)
-	go func() {
-		for {
-			event := <-l.eventChan
-			switch event {
-			case logFollowerEventClose:
-				// wait a bit
-				time.Sleep(5 * time.Second)
-				stream.Close()
-			case logFollowerEventStart:
-				stream, err = getLogFromPod(kubeClient, namespace, podName, true)
-				if err != nil {
-					ErrPrintln(ColorRed, err)
-					os.Exit(1)
-				}
-				go io.Copy(os.Stdout, stream)
-			}
-		}
-	}()
-	return nil
 }

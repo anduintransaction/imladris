@@ -520,6 +520,9 @@ func (p *Project) Update() error {
 }
 
 func (p *Project) updateAsset(asset *Asset) error {
+	if asset.Kind != "pod" && asset.Kind != "deployment" && asset.Kind != "configmap" {
+		return nil
+	}
 	objectMeta := asset.ResourceData.(Meta)
 	assetName := objectMeta.GetName()
 	Printf(ColorYellow, "Updating %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
