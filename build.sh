@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RELEASE=0.8.0
+RELEASE=0.8.1
 dist=dist
 bin=imladris
 

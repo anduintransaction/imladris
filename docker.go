@@ -139,7 +139,7 @@ func doDockerPush(name string) error {
 }
 
 func dockerTag(name, alias string) error {
-	Printf(ColorYellow, "Tagging %q as %q", name, alias)
+	Printf(ColorYellow, "Tagging %q as %q\n", name, alias)
 	cmd := exec.Command("docker", "tag", name, alias)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
