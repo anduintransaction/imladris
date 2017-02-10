@@ -219,7 +219,7 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 	case "deployment":
 		_, err = kubeClient.Extensions().Deployments(namespace).Update(resourceData.(*v1beta1.Deployment))
 	case "service":
-		_, err = kubeClient.Core().Services(namespace).Update(resourceData.(*v1.Service))
+		return nil
 	case "job":
 		return nil
 	case "persistentvolumeclaim":
@@ -227,7 +227,7 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 	case "configmap":
 		_, err = kubeClient.Core().ConfigMaps(namespace).Update(resourceData.(*v1.ConfigMap))
 	case "secret":
-		return nil
+		_, err = kubeClient.Core().Secrets(namespace).Update(resourceData.(*v1.Secret))
 	default:
 		return UnsupportedResource(kind)
 	}

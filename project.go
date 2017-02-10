@@ -26,21 +26,23 @@ type Project struct {
 }
 
 type ProjectConfig struct {
-	RootFolder      string              `yaml:"root_folder"`
-	Pulls           []string            `yaml:"pulls"`
-	InitUp          []string            `yaml:"init_up"`
-	InitDown        []string            `yaml:"init_down"`
-	FinalizeUp      []string            `yaml:"finalize_up"`
-	FinalizeDown    []string            `yaml:"finalize_down"`
-	Services        []string            `yaml:"services"`
-	Jobs            []string            `yaml:"jobs"`
-	Resources       []string            `yaml:"resources"`
-	Excludes        []string            `yaml:"excludes"`
-	Namespace       string              `yaml:"namespace"`
-	Variables       map[string]string   `yaml:"variables"`
-	Build           []*ProjectBuild     `yaml:"build"`
-	Credentials     []*DockerCredential `yaml:"credentials"`
-	DeleteNamespace bool                `yaml:"delete_namespace"`
+	RootFolder            string                  `yaml:"root_folder"`
+	Pulls                 []string                `yaml:"pulls"`
+	InitUp                []string                `yaml:"init_up"`
+	InitDown              []string                `yaml:"init_down"`
+	FinalizeUp            []string                `yaml:"finalize_up"`
+	FinalizeDown          []string                `yaml:"finalize_down"`
+	Services              []string                `yaml:"services"`
+	Jobs                  []string                `yaml:"jobs"`
+	Resources             []string                `yaml:"resources"`
+	Excludes              []string                `yaml:"excludes"`
+	Namespace             string                  `yaml:"namespace"`
+	Variables             map[string]string       `yaml:"variables"`
+	Build                 []*ProjectBuild         `yaml:"build"`
+	Credentials           []*DockerCredential     `yaml:"credentials"`
+	DeleteNamespace       bool                    `yaml:"delete_namespace"`
+	AutoUpdates           []*AutoUpdate           `yaml:"auto_updates"`
+	AutoUpdateCredentials []*AutoUpdateCredential `yaml:"auto_update_credentials"`
 }
 
 type ProjectBuild struct {
@@ -55,6 +57,23 @@ type ProjectBuild struct {
 
 type DockerCredential struct {
 	Host         string `yaml:"host"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	PasswordFile string `yaml:"password_file"`
+}
+
+type AutoUpdate struct {
+	Name       string                 `yaml:"name"`
+	Containers []*AutoUpdateContainer `yaml:"containers"`
+}
+
+type AutoUpdateContainer struct {
+	Name       string `yaml:"name"`
+	Credential string `yaml:"credential"`
+}
+
+type AutoUpdateCredential struct {
+	Name         string `yaml:"name"`
 	Username     string `yaml:"username"`
 	Password     string `yaml:"password"`
 	PasswordFile string `yaml:"password_file"`
@@ -520,7 +539,7 @@ func (p *Project) Update() error {
 }
 
 func (p *Project) updateAsset(asset *Asset) error {
-	if asset.Kind != "pod" && asset.Kind != "deployment" && asset.Kind != "configmap" {
+	if asset.Kind != "pod" && asset.Kind != "deployment" && asset.Kind != "configmap" && asset.Kind != "secret" {
 		return nil
 	}
 	objectMeta := asset.ResourceData.(Meta)
@@ -537,6 +556,117 @@ func (p *Project) updateAsset(asset *Asset) error {
 	err = updateResource(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace, asset.ResourceData)
 	if err == nil {
 		Println(ColorGreen, "====> Success")
+	}
+	return err
+}
+
+func (p *Project) AutoUpdate(version string) error {
+	if version == "" {
+		Println(ColorYellow, "Will automatically search for latest version")
+	} else {
+		Printf(ColorYellow, "Autoupdate to %s\n", version)
+	}
+	autoUpdates := make(map[string]*AutoUpdate)
+	for _, autoUpdate := range p.projectConfig.AutoUpdates {
+		autoUpdates[autoUpdate.Name] = autoUpdate
+	}
+	credentials := make(map[string]*AutoUpdateCredential)
+	for _, credential := range p.projectConfig.AutoUpdateCredentials {
+		credentials[credential.Name] = credential
+	}
+	for _, resource := range p.resources {
+		err := p.autoupdateAsset(resource, autoUpdates, credentials, version)
+		if err != nil {
+			return err
+		}
+	}
+	for _, job := range p.jobs {
+		err := p.autoupdateAsset(job, autoUpdates, credentials, version)
+		if err != nil {
+			return err
+		}
+	}
+	for _, service := range p.services {
+		err := p.autoupdateAsset(service, autoUpdates, credentials, version)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *Project) autoupdateAsset(asset *Asset, autoUpdates map[string]*AutoUpdate, autoUpdateCredentials map[string]*AutoUpdateCredential, newTag string) error {
+	if asset.Kind != "deployment" {
+		return nil
+	}
+	objectMeta := asset.ResourceData.(Meta)
+	assetName := objectMeta.GetName()
+	autoUpdateInfo, ok := autoUpdates[assetName]
+	if !ok {
+		return nil
+	}
+	Printf(ColorYellow, "Autoupdate %s %q from namespace %q\n", asset.Kind, assetName, p.projectConfig.Namespace)
+	existed, err := checkResourceExist(p.kubeClient, asset.Kind, assetName, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
+	if !existed {
+		Println(ColorGreen, "====> Not existed")
+		return nil
+	}
+	deploymentInfo, err := getDeployment(p.kubeClient, assetName, p.projectConfig.Namespace)
+	if err != nil {
+		return err
+	}
+	newContainers := make(map[string]string)
+	for _, containerInfo := range autoUpdateInfo.Containers {
+		oldContainer := deploymentInfo.Containers[containerInfo.Name]
+		if oldContainer == nil {
+			ErrPrintf(ColorRed, "====> Container not found: %q\n", containerInfo.Name)
+			continue
+		}
+		// We only support gcr.io at the moment
+		if !strings.HasPrefix(oldContainer.Image, "gcr.io") && newTag == "" {
+			ErrPrintf(ColorPurple, "====> We only support gcr.io at the moment, skipping container %q (%q)\n", containerInfo.Name, oldContainer.Image)
+			return nil
+		}
+		if newTag == "" {
+			credential := autoUpdateCredentials[containerInfo.Credential]
+			var username, password string
+			if credential != nil {
+				username, password, err = readAutoupdateCredential(p.projectConfig.RootFolder, credential)
+				if err != nil {
+					return err
+				}
+			}
+			newTag, err = findNewImageTag(oldContainer.Image, username, password)
+			if err != nil {
+				return err
+			}
+		}
+		if newTag == oldContainer.Tag {
+			Printf(ColorPurple, "====> Same tag %q, skipping container %q (%q)\n", containerInfo.Name, oldContainer.Image)
+			continue
+		}
+		newContainers[oldContainer.Name] = oldContainer.Image + ":" + newTag
+	}
+	if len(newContainers) == 0 {
+		Println(ColorGreen, "====> No new container found")
+		return nil
+	}
+	for i, container := range deploymentInfo.Deployment.Spec.Template.Spec.Containers {
+		newImage, ok := newContainers[container.Name]
+		if ok {
+			container.Image = newImage
+			deploymentInfo.Deployment.Spec.Template.Spec.Containers[i] = container
+		}
+	}
+	_, err = p.kubeClient.Extensions().Deployments(p.projectConfig.Namespace).Update(deploymentInfo.Deployment)
+	if err == nil {
+		Printf(ColorGreen, "====> Updated deployment %q:\n", assetName)
+		for containerName, newImage := range newContainers {
+			Printf(ColorGreen, "====> %q to %q\n", containerName, newImage)
+		}
 	}
 	return err
 }
