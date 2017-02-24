@@ -21,7 +21,7 @@ const (
 )
 
 func Println(color Color, v ...interface{}) {
-	if runtime.GOOS == "windows" {
+	if colorEnabled() {
 		fmt.Println(v...)
 		return
 	}
@@ -31,8 +31,8 @@ func Println(color Color, v ...interface{}) {
 }
 
 func Printf(color Color, format string, v ...interface{}) {
-	if runtime.GOOS == "windows" {
-		fmt.Println(v...)
+	if colorEnabled() {
+		fmt.Printf(format, v...)
 		return
 	}
 	fmt.Print(color)
@@ -41,8 +41,8 @@ func Printf(color Color, format string, v ...interface{}) {
 }
 
 func ErrPrintln(color Color, v ...interface{}) {
-	if runtime.GOOS == "windows" {
-		fmt.Println(v...)
+	if colorEnabled() {
+		fmt.Fprint(os.Stderr, v...)
 		return
 	}
 	fmt.Fprint(os.Stderr, color)
@@ -51,11 +51,15 @@ func ErrPrintln(color Color, v ...interface{}) {
 }
 
 func ErrPrintf(color Color, format string, v ...interface{}) {
-	if runtime.GOOS == "windows" {
-		fmt.Println(v...)
+	if colorEnabled() {
+		fmt.Fprintf(os.Stderr, format, v...)
 		return
 	}
 	fmt.Fprint(os.Stderr, color)
 	fmt.Fprintf(os.Stderr, format, v...)
 	fmt.Fprint(os.Stderr, colorReset)
+}
+
+func colorEnabled() bool {
+	return runtime.GOOS == "windows" || os.Getenv("IMLADRIS_NO_COLOR") == "1"
 }
