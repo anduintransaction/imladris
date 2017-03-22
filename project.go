@@ -12,7 +12,7 @@ import (
 	"text/template"
 
 	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/1.4/kubernetes"
+	"k8s.io/client-go/1.5/kubernetes"
 )
 
 type Project struct {

@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/1.4/kubernetes"
-	"k8s.io/client-go/1.4/pkg/api"
-	"k8s.io/client-go/1.4/pkg/api/errors"
-	"k8s.io/client-go/1.4/pkg/api/v1"
-	v1batch "k8s.io/client-go/1.4/pkg/apis/batch/v1"
-	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/1.4/pkg/fields"
-	"k8s.io/client-go/1.4/pkg/labels"
-	"k8s.io/client-go/1.4/tools/clientcmd"
+	"k8s.io/client-go/1.5/kubernetes"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/errors"
+	"k8s.io/client-go/1.5/pkg/api/v1"
+	v1batch "k8s.io/client-go/1.5/pkg/apis/batch/v1"
+	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/1.5/pkg/fields"
+	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/1.5/tools/clientcmd"
 )
 
 func loadKubernetesClient(config *appConfig) (*kubernetes.Clientset, error) {
