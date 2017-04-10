@@ -7,15 +7,12 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/api/errors"
-	"k8s.io/client-go/1.5/pkg/api/v1"
-	v1batch "k8s.io/client-go/1.5/pkg/apis/batch/v1"
-	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/1.5/pkg/fields"
-	"k8s.io/client-go/1.5/pkg/labels"
-	"k8s.io/client-go/1.5/tools/clientcmd"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/errors"
+	"k8s.io/client-go/pkg/api/v1"
+	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func loadKubernetesClient(config *appConfig) (*kubernetes.Clientset, error) {
@@ -79,7 +76,7 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 		return err
 	}
 	for i := 0; i < 10; i++ {
-		err = kubeClient.Core().Namespaces().Delete(namespace, &api.DeleteOptions{})
+		err = kubeClient.Core().Namespaces().Delete(namespace, &v1.DeleteOptions{})
 		if err == nil {
 			return nil
 		}
@@ -141,7 +138,7 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		switch kind {
 		case "pod":
 			// Delete if possible
-			deleteOptions := api.NewDeleteOptions(0)
+			deleteOptions := v1.NewDeleteOptions(0)
 			kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
 			_, err = kubeClient.Core().Pods(namespace).Create(resourceData.(*v1.Pod))
 		case "deployment":
@@ -189,7 +186,7 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 
 func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace string) error {
 	var err error
-	deleteOptions := api.NewDeleteOptions(0)
+	deleteOptions := v1.NewDeleteOptions(0)
 	switch kind {
 	case "pod":
 		return destroyPod(kubeClient, name, namespace)
@@ -256,7 +253,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 }
 
 func destroyPod(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := api.NewDeleteOptions(0)
+	deleteOptions := v1.NewDeleteOptions(0)
 	err := kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
 	if err == nil {
 		return nil
@@ -272,17 +269,13 @@ func destroyPod(kubeClient *kubernetes.Clientset, name, namespace string) error 
 }
 
 func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := api.NewDeleteOptions(0)
+	deleteOptions := v1.NewDeleteOptions(0)
 	err := kubeClient.Extensions().Deployments(namespace).Delete(name, deleteOptions)
 	if err != nil {
 		return err
 	}
-	selector, err := labels.Parse("name=" + name)
-	if err != nil {
-		return err
-	}
-	listOptions := api.ListOptions{
-		LabelSelector: selector,
+	listOptions := v1.ListOptions{
+		LabelSelector: "name=" + name,
 	}
 	err = kubeClient.Extensions().ReplicaSets(namespace).DeleteCollection(deleteOptions, listOptions)
 	if err != nil {
@@ -292,17 +285,13 @@ func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string)
 }
 
 func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := api.NewDeleteOptions(0)
+	deleteOptions := v1.NewDeleteOptions(0)
 	err := kubeClient.Batch().Jobs(namespace).Delete(name, deleteOptions)
 	if err != nil {
 		return err
 	}
-	selector, err := labels.Parse("job-name=" + name)
-	if err != nil {
-		return err
-	}
-	pods, err := kubeClient.Core().Pods(namespace).List(api.ListOptions{
-		LabelSelector: selector,
+	pods, err := kubeClient.Core().Pods(namespace).List(v1.ListOptions{
+		LabelSelector: "job-name=" + name,
 	})
 	if err != nil {
 		return err
@@ -336,12 +325,8 @@ func getLogFromPod(kubeClient *kubernetes.Clientset, namespace, podName string, 
 }
 
 func getEvents(kubeClient *kubernetes.Clientset, namespace, podName string) ([]v1.Event, error) {
-	selector, err := fields.ParseSelector("involvedObject.name=" + podName)
-	if err != nil {
-		return nil, err
-	}
-	events, err := kubeClient.Core().Events(namespace).List(api.ListOptions{
-		FieldSelector: selector,
+	events, err := kubeClient.Core().Events(namespace).List(v1.ListOptions{
+		FieldSelector: "involvedObject.name=" + podName,
 	})
 	if err != nil {
 		return nil, err

@@ -10,8 +10,8 @@ import (
 
 	"strconv"
 
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/apis/extensions/v1beta1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 type ContainerInfo struct {

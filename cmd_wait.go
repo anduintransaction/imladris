@@ -6,10 +6,9 @@ import (
 
 	"time"
 
-	"k8s.io/client-go/1.5/pkg/api"
-	v1batch "k8s.io/client-go/1.5/pkg/apis/batch/v1"
-	"k8s.io/client-go/1.5/pkg/fields"
-	"k8s.io/client-go/1.5/pkg/watch"
+	"k8s.io/client-go/pkg/api/v1"
+	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
+	"k8s.io/client-go/pkg/watch"
 )
 
 func cmdWait(args []string, config *appConfig) {
@@ -35,13 +34,8 @@ func cmdWait(args []string, config *appConfig) {
 		os.Exit(1)
 	}
 	checkJobStatus(job)
-	selector, err := fields.ParseSelector("metadata.name=" + jobName)
-	if err != nil {
-		ErrPrintln(ColorRed, err)
-		os.Exit(1)
-	}
-	watcher, err := clientset.Batch().Jobs(namespace).Watch(api.ListOptions{
-		FieldSelector: selector,
+	watcher, err := clientset.Batch().Jobs(namespace).Watch(v1.ListOptions{
+		FieldSelector: "metadata.name=" + jobName,
 	})
 	if err != nil {
 		ErrPrintln(ColorRed, err)
