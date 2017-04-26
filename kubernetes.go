@@ -119,6 +119,8 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.Core().ConfigMaps(namespace).Get(name)
 	case "secret":
 		_, err = kubeClient.Core().Secrets(namespace).Get(name)
+	case "ingress":
+		_, err = kubeClient.Extensions().Ingresses(namespace).Get(name)
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -153,6 +155,8 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 			_, err = kubeClient.Core().ConfigMaps(namespace).Create(resourceData.(*v1.ConfigMap))
 		case "secret":
 			_, err = kubeClient.Core().Secrets(namespace).Create(resourceData.(*v1.Secret))
+		case "ingress":
+			_, err = kubeClient.Extensions().Ingresses(namespace).Create(resourceData.(*v1beta1.Ingress))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -202,6 +206,8 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().ConfigMaps(namespace).Delete(name, deleteOptions)
 	case "secret":
 		err = kubeClient.Core().Secrets(namespace).Delete(name, deleteOptions)
+	case "ingress":
+		err = kubeClient.Extensions().Ingresses(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -225,6 +231,8 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		_, err = kubeClient.Core().ConfigMaps(namespace).Update(resourceData.(*v1.ConfigMap))
 	case "secret":
 		_, err = kubeClient.Core().Secrets(namespace).Update(resourceData.(*v1.Secret))
+	case "ingress":
+		_, err = kubeClient.Extensions().Ingresses(namespace).Update(resourceData.(*v1beta1.Ingress))
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -240,7 +248,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 		containers = resourceData.(*v1beta1.Deployment).Spec.Template.Spec.Containers
 	case "job":
 		containers = resourceData.(*v1batch.Job).Spec.Template.Spec.Containers
-	case "service", "persistentvolumeclaim", "configmap", "secret":
+	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress":
 		return nil, nil
 	default:
 		return nil, UnsupportedResource(kind)

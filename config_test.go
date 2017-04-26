@@ -159,9 +159,9 @@ func TestConfigNotSimpleRemote(t *testing.T) {
 	checkNotSimpleJobs(req, project.jobs)
 
 	// Check services
-	req.Len(project.services, 2)
+	req.Len(project.services, 3)
 	checkNotSimpleServiceCommon(req, project.services[0], "1.2.4")
-	checkNotSimpleServiceRemote(req, project.services[1])
+	checkNotSimpleServiceRemote(req, project.services[2])
 }
 
 func checkNotSimpleResourceConfig(req *require.Assertions, resource *Asset) {
