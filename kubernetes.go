@@ -121,6 +121,10 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.Core().Secrets(namespace).Get(name)
 	case "ingress":
 		_, err = kubeClient.Extensions().Ingresses(namespace).Get(name)
+	case "endpoints":
+		_, err = kubeClient.Core().Endpoints(namespace).Get(name)
+	case "daemonset":
+		_, err = kubeClient.Extensions().DaemonSets(namespace).Get(name)
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -157,6 +161,10 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 			_, err = kubeClient.Core().Secrets(namespace).Create(resourceData.(*v1.Secret))
 		case "ingress":
 			_, err = kubeClient.Extensions().Ingresses(namespace).Create(resourceData.(*v1beta1.Ingress))
+		case "endpoints":
+			_, err = kubeClient.Core().Endpoints(namespace).Create(resourceData.(*v1.Endpoints))
+		case "daemonset":
+			_, err = kubeClient.Extensions().DaemonSets(namespace).Create(resourceData.(*v1beta1.DaemonSet))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -208,6 +216,10 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().Secrets(namespace).Delete(name, deleteOptions)
 	case "ingress":
 		err = kubeClient.Extensions().Ingresses(namespace).Delete(name, deleteOptions)
+	case "endpoints":
+		err = kubeClient.Core().Endpoints(namespace).Delete(name, deleteOptions)
+	case "daemonset":
+		err = kubeClient.Extensions().DaemonSets(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -233,6 +245,10 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		_, err = kubeClient.Core().Secrets(namespace).Update(resourceData.(*v1.Secret))
 	case "ingress":
 		_, err = kubeClient.Extensions().Ingresses(namespace).Update(resourceData.(*v1beta1.Ingress))
+	case "endpoints":
+		_, err = kubeClient.Core().Endpoints(namespace).Update(resourceData.(*v1.Endpoints))
+	case "daemonset":
+		_, err = kubeClient.Extensions().DaemonSets(namespace).Update(resourceData.(*v1beta1.DaemonSet))
 	default:
 		return UnsupportedResource(kind)
 	}

@@ -57,6 +57,10 @@ func (asset *Asset) parseResource(data []byte) error {
 		asset.ResourceData = &v1.Secret{}
 	case "ingress":
 		asset.ResourceData = &v1beta1.Ingress{}
+	case "endpoints":
+		asset.ResourceData = &v1.Endpoints{}
+	case "daemonset":
+		asset.ResourceData = &v1beta1.DaemonSet{}
 	default:
 		return UnsupportedResource(asset.Kind)
 	}
