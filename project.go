@@ -561,7 +561,7 @@ func (p *Project) updateAsset(asset *Asset) error {
 }
 
 func (p *Project) AutoUpdate(version string) error {
-	if version == "" {
+	if version == "" || version == "auto" {
 		Println(ColorYellow, "Will automatically search for latest version")
 	} else {
 		Printf(ColorYellow, "Autoupdate to %s\n", version)
