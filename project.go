@@ -626,11 +626,11 @@ func (p *Project) autoupdateAsset(asset *Asset, autoUpdates map[string]*AutoUpda
 			continue
 		}
 		// We only support gcr.io at the moment
-		if !strings.HasPrefix(oldContainer.Image, "gcr.io") && newTag == "" {
+		if !strings.HasPrefix(oldContainer.Image, "gcr.io") && (newTag == "" || newTag == "auto") {
 			ErrPrintf(ColorPurple, "====> We only support gcr.io at the moment, skipping container %q (%q)\n", containerInfo.Name, oldContainer.Image)
 			return nil
 		}
-		if newTag == "" {
+		if newTag == "" || newTag == "auto" {
 			credential := autoUpdateCredentials[containerInfo.Credential]
 			var username, password string
 			if credential != nil {
