@@ -6,9 +6,9 @@ import (
 
 	"time"
 
-	"k8s.io/client-go/pkg/api/v1"
+	apiv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
-	"k8s.io/client-go/pkg/watch"
 )
 
 func cmdWait(args []string, config *appConfig) {
@@ -28,13 +28,13 @@ func cmdWait(args []string, config *appConfig) {
 		os.Exit(1)
 	}
 
-	job, err := clientset.Batch().Jobs(namespace).Get(jobName)
+	job, err := clientset.Batch().Jobs(namespace).Get(jobName, apiv1.GetOptions{})
 	if err != nil {
 		ErrPrintln(ColorRed, err)
 		os.Exit(1)
 	}
 	checkJobStatus(job)
-	watcher, err := clientset.Batch().Jobs(namespace).Watch(v1.ListOptions{
+	watcher, err := clientset.Batch().Jobs(namespace).Watch(apiv1.ListOptions{
 		FieldSelector: "metadata.name=" + jobName,
 	})
 	if err != nil {
@@ -62,7 +62,7 @@ func cmdWait(args []string, config *appConfig) {
 			ErrPrintln(ColorRed, "Timeout while waiting for job events")
 			os.Exit(1)
 		case <-poller.C:
-			job, err = clientset.Batch().Jobs(namespace).Get(jobName)
+			job, err = clientset.Batch().Jobs(namespace).Get(jobName, apiv1.GetOptions{})
 			if err != nil {
 				pollErrorCount++
 				if pollErrorCount < 5 {

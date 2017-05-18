@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	apiv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -34,7 +35,7 @@ func cmdLog(args []string, config *appConfig) {
 		waitExit := 0
 	wait_exit:
 		for {
-			pod, err := clientset.Core().Pods(namespace).Get(podName)
+			pod, err := clientset.Core().Pods(namespace).Get(podName, apiv1.GetOptions{})
 			if err != nil {
 				ErrPrintln(ColorRed, err)
 				os.Exit(1)
@@ -75,7 +76,7 @@ func tailPodLog(clientset *kubernetes.Clientset, podName, namespace, context, ta
 	// Wait for pod running
 wait_running:
 	for {
-		pod, err := clientset.Core().Pods(namespace).Get(podName)
+		pod, err := clientset.Core().Pods(namespace).Get(podName, apiv1.GetOptions{})
 		if err != nil {
 			ErrPrintln(ColorRed, err)
 			os.Exit(1)

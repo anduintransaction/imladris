@@ -10,6 +10,7 @@ import (
 
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -26,7 +27,7 @@ type DeploymentInfo struct {
 }
 
 func getDeployment(kubeClient *kubernetes.Clientset, name, namespace string) (*DeploymentInfo, error) {
-	deployment, err := kubeClient.Extensions().Deployments(namespace).Get(name)
+	deployment, err := kubeClient.Extensions().Deployments(namespace).Get(name, v1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

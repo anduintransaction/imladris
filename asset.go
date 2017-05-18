@@ -6,10 +6,10 @@ import (
 	"bytes"
 
 	"gopkg.in/yaml.v2"
+	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/pkg/api/v1"
 	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	kubeyaml "k8s.io/client-go/pkg/util/yaml"
 )
 
 type UnsupportedResource string

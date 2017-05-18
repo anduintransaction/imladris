@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/api/errors"
+	apiv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/errors"
 	"k8s.io/client-go/pkg/api/v1"
 	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
 	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -48,7 +49,7 @@ func loadKubernetesResource(data []byte) (*KubernetesResource, error) {
 }
 
 func createNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
-	_, err := kubeClient.Core().Namespaces().Get(namespace)
+	_, err := kubeClient.Core().Namespaces().Get(namespace, apiv1.GetOptions{})
 	if err == nil {
 		return nil
 	}
@@ -56,7 +57,7 @@ func createNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 		return err
 	}
 	ns := &v1.Namespace{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: apiv1.ObjectMeta{
 			Name: namespace,
 		},
 	}
@@ -68,7 +69,7 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 	if namespace == "default" {
 		return nil
 	}
-	_, err := kubeClient.Core().Namespaces().Get(namespace)
+	_, err := kubeClient.Core().Namespaces().Get(namespace, apiv1.GetOptions{})
 	if err != nil {
 		if isResourceNotExist(err) {
 			return nil
@@ -76,7 +77,7 @@ func deleteNamespace(kubeClient *kubernetes.Clientset, namespace string) error {
 		return err
 	}
 	for i := 0; i < 10; i++ {
-		err = kubeClient.Core().Namespaces().Delete(namespace, &v1.DeleteOptions{})
+		err = kubeClient.Core().Namespaces().Delete(namespace, &apiv1.DeleteOptions{})
 		if err == nil {
 			return nil
 		}
@@ -92,7 +93,7 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 	var err error
 	switch kind {
 	case "pod":
-		pod, err := kubeClient.Core().Pods(namespace).Get(name)
+		pod, err := kubeClient.Core().Pods(namespace).Get(name, apiv1.GetOptions{})
 		if err != nil {
 			if isResourceNotExist(err) {
 				return false, nil
@@ -108,23 +109,23 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 			return true, nil
 		}
 	case "deployment":
-		_, err = kubeClient.Extensions().Deployments(namespace).Get(name)
+		_, err = kubeClient.Extensions().Deployments(namespace).Get(name, apiv1.GetOptions{})
 	case "service":
-		_, err = kubeClient.Core().Services(namespace).Get(name)
+		_, err = kubeClient.Core().Services(namespace).Get(name, apiv1.GetOptions{})
 	case "job":
-		_, err = kubeClient.Batch().Jobs(namespace).Get(name)
+		_, err = kubeClient.Batch().Jobs(namespace).Get(name, apiv1.GetOptions{})
 	case "persistentvolumeclaim":
-		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Get(name)
+		_, err = kubeClient.Core().PersistentVolumeClaims(namespace).Get(name, apiv1.GetOptions{})
 	case "configmap":
-		_, err = kubeClient.Core().ConfigMaps(namespace).Get(name)
+		_, err = kubeClient.Core().ConfigMaps(namespace).Get(name, apiv1.GetOptions{})
 	case "secret":
-		_, err = kubeClient.Core().Secrets(namespace).Get(name)
+		_, err = kubeClient.Core().Secrets(namespace).Get(name, apiv1.GetOptions{})
 	case "ingress":
-		_, err = kubeClient.Extensions().Ingresses(namespace).Get(name)
+		_, err = kubeClient.Extensions().Ingresses(namespace).Get(name, apiv1.GetOptions{})
 	case "endpoints":
-		_, err = kubeClient.Core().Endpoints(namespace).Get(name)
+		_, err = kubeClient.Core().Endpoints(namespace).Get(name, apiv1.GetOptions{})
 	case "daemonset":
-		_, err = kubeClient.Extensions().DaemonSets(namespace).Get(name)
+		_, err = kubeClient.Extensions().DaemonSets(namespace).Get(name, apiv1.GetOptions{})
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -144,7 +145,7 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		switch kind {
 		case "pod":
 			// Delete if possible
-			deleteOptions := v1.NewDeleteOptions(0)
+			deleteOptions := apiv1.NewDeleteOptions(0)
 			kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
 			_, err = kubeClient.Core().Pods(namespace).Create(resourceData.(*v1.Pod))
 		case "deployment":
@@ -198,7 +199,7 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 
 func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace string) error {
 	var err error
-	deleteOptions := v1.NewDeleteOptions(0)
+	deleteOptions := apiv1.NewDeleteOptions(0)
 	switch kind {
 	case "pod":
 		return destroyPod(kubeClient, name, namespace)
@@ -277,7 +278,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 }
 
 func destroyPod(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := v1.NewDeleteOptions(0)
+	deleteOptions := apiv1.NewDeleteOptions(0)
 	err := kubeClient.Core().Pods(namespace).Delete(name, deleteOptions)
 	if err == nil {
 		return nil
@@ -293,12 +294,12 @@ func destroyPod(kubeClient *kubernetes.Clientset, name, namespace string) error 
 }
 
 func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := v1.NewDeleteOptions(0)
+	deleteOptions := apiv1.NewDeleteOptions(0)
 	err := kubeClient.Extensions().Deployments(namespace).Delete(name, deleteOptions)
 	if err != nil {
 		return err
 	}
-	listOptions := v1.ListOptions{
+	listOptions := apiv1.ListOptions{
 		LabelSelector: "name=" + name,
 	}
 	err = kubeClient.Extensions().ReplicaSets(namespace).DeleteCollection(deleteOptions, listOptions)
@@ -309,12 +310,12 @@ func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string)
 }
 
 func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error {
-	deleteOptions := v1.NewDeleteOptions(0)
+	deleteOptions := apiv1.NewDeleteOptions(0)
 	err := kubeClient.Batch().Jobs(namespace).Delete(name, deleteOptions)
 	if err != nil {
 		return err
 	}
-	pods, err := kubeClient.Core().Pods(namespace).List(v1.ListOptions{
+	pods, err := kubeClient.Core().Pods(namespace).List(apiv1.ListOptions{
 		LabelSelector: "job-name=" + name,
 	})
 	if err != nil {
@@ -349,7 +350,7 @@ func getLogFromPod(kubeClient *kubernetes.Clientset, namespace, podName string, 
 }
 
 func getEvents(kubeClient *kubernetes.Clientset, namespace, podName string) ([]v1.Event, error) {
-	events, err := kubeClient.Core().Events(namespace).List(v1.ListOptions{
+	events, err := kubeClient.Core().Events(namespace).List(apiv1.ListOptions{
 		FieldSelector: "involvedObject.name=" + podName,
 	})
 	if err != nil {
