@@ -265,7 +265,9 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 		containers = resourceData.(*v1beta1.Deployment).Spec.Template.Spec.Containers
 	case "job":
 		containers = resourceData.(*v1batch.Job).Spec.Template.Spec.Containers
-	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress":
+	case "daemonset":
+		containers = resourceData.(*v1beta1.DaemonSet).Spec.Template.Spec.Containers
+	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress", "endpoints":
 		return nil, nil
 	default:
 		return nil, UnsupportedResource(kind)
