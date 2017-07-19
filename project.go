@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -277,8 +276,9 @@ func (p *Project) runScripts(scripts []string) error {
 		Printf(ColorYellow, "Running script %q\n", script)
 		cmd := exec.Command("sh", "-c", script)
 		cmd.Dir = p.projectConfig.RootFolder
-		output, err := cmd.CombinedOutput()
-		fmt.Print(string(output))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
 		if err != nil {
 			return err
 		}
