@@ -253,7 +253,7 @@ func (p *Project) readAsset(filename string) (*Asset, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := template.New(filename).Parse(string(data))
+	t, err := template.New(filename).Funcs(getFuncMap()).Parse(string(data))
 	if err != nil {
 		return nil, err
 	}
@@ -454,6 +454,21 @@ func (p *Project) Down() error {
 		}
 	}
 	return p.runScripts(p.projectConfig.FinalizeDown)
+}
+
+func (p *Project) Debug() {
+	Println(ColorGreen, "=========> Resources  <=========")
+	for _, asset := range p.resources {
+		asset.Debug()
+	}
+	Println(ColorGreen, "=========>  Services  <=========")
+	for _, asset := range p.services {
+		asset.Debug()
+	}
+	Println(ColorGreen, "=========>    Jobs    <=========")
+	for _, asset := range p.jobs {
+		asset.Debug()
+	}
 }
 
 func (p *Project) createAsset(asset *Asset) error {

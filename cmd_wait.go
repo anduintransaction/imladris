@@ -6,9 +6,9 @@ import (
 
 	"time"
 
+	v1batch "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
 )
 
 func cmdWait(args []string, config *appConfig) {

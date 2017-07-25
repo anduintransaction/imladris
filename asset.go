@@ -1,15 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"bytes"
 
 	"gopkg.in/yaml.v2"
+	v1batch "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/pkg/api/v1"
-	v1batch "k8s.io/client-go/pkg/apis/batch/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 type UnsupportedResource string
@@ -21,10 +22,12 @@ func (err UnsupportedResource) Error() string {
 type Asset struct {
 	Kind         string `yaml:"kind"`
 	ResourceData interface{}
+	data         []byte
 }
 
 func parseAsset(data []byte) (*Asset, error) {
 	asset := &Asset{}
+	asset.data = data
 	err := yaml.Unmarshal(data, asset)
 	if err != nil {
 		return nil, err
@@ -74,6 +77,10 @@ func (asset *Asset) parseResource(data []byte) error {
 func (asset *Asset) UpdateNamespace(namespace string) {
 	objectMeta := asset.ResourceData.(Meta)
 	objectMeta.SetNamespace(namespace)
+}
+
+func (asset *Asset) Debug() {
+	fmt.Println(string(asset.data))
 }
 
 type Meta interface {

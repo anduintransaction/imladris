@@ -76,6 +76,8 @@ func main() {
 		cmdGenerate(args[1:], config)
 	case "autoupdate":
 		cmdAutoUpdate(args[1:], config)
+	case "debug":
+		cmdDebug(args[1:], config)
 	default:
 		printUsage()
 	}
