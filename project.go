@@ -10,6 +10,8 @@ import (
 	"strings"
 	"text/template"
 
+	"fmt"
+
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
 )
@@ -84,9 +86,6 @@ func readProject(kubeClient *kubernetes.Clientset, assetRoot string, config *app
 		projectConfig: &ProjectConfig{},
 	}
 	var err error
-	if err != nil {
-		return nil, err
-	}
 	err = p.readProjectConfig(assetRoot, config.variables)
 	if err != nil {
 		return nil, err
@@ -176,7 +175,7 @@ func (p *Project) readProjectConfig(assetRoot string, variables variableMap) err
 	projectConfig := &ProjectConfig{}
 	err = yaml.Unmarshal(buf.Bytes(), projectConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to read project config: %s", err.Error())
 	}
 	p.projectConfig = projectConfig
 	return nil
@@ -263,7 +262,7 @@ func (p *Project) readAsset(filename string) (*Asset, error) {
 	if err != nil {
 		return nil, err
 	}
-	asset, err := parseAsset(buf.Bytes())
+	asset, err := parseAsset(filename, buf.Bytes())
 	if err != nil {
 		return nil, err
 	}

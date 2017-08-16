@@ -22,20 +22,22 @@ func (err UnsupportedResource) Error() string {
 type Asset struct {
 	Kind         string `yaml:"kind"`
 	ResourceData interface{}
+	filename     string
 	data         []byte
 }
 
-func parseAsset(data []byte) (*Asset, error) {
+func parseAsset(filename string, data []byte) (*Asset, error) {
 	asset := &Asset{}
+	asset.filename = filename
 	asset.data = data
 	err := yaml.Unmarshal(data, asset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse asset %q, error: %s", asset.filename, err.Error())
 	}
 	asset.Kind = strings.ToLower(asset.Kind)
 	err = asset.parseResource(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to parse asset %q, error: %s", asset.filename, err.Error())
 	}
 	return asset, nil
 }
