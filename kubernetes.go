@@ -10,6 +10,7 @@ import (
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	rbac "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apiv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -126,6 +127,16 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.Core().Endpoints(namespace).Get(name, apiv1.GetOptions{})
 	case "daemonset":
 		_, err = kubeClient.Extensions().DaemonSets(namespace).Get(name, apiv1.GetOptions{})
+	case "serviceaccount":
+		_, err = kubeClient.Core().ServiceAccounts(namespace).Get(name, apiv1.GetOptions{})
+	case "role":
+		_, err = kubeClient.RbacV1beta1().Roles(namespace).Get(name, apiv1.GetOptions{})
+	case "clusterrole":
+		_, err = kubeClient.RbacV1beta1().ClusterRoles().Get(name, apiv1.GetOptions{})
+	case "rolebinding":
+		_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Get(name, apiv1.GetOptions{})
+	case "clusterrolebinding":
+		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Get(name, apiv1.GetOptions{})
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -166,6 +177,16 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 			_, err = kubeClient.Core().Endpoints(namespace).Create(resourceData.(*v1.Endpoints))
 		case "daemonset":
 			_, err = kubeClient.Extensions().DaemonSets(namespace).Create(resourceData.(*v1beta1.DaemonSet))
+		case "serviceaccount":
+			_, err = kubeClient.Core().ServiceAccounts(namespace).Create(resourceData.(*v1.ServiceAccount))
+		case "role":
+			_, err = kubeClient.RbacV1beta1().Roles(namespace).Create(resourceData.(*rbac.Role))
+		case "clusterrole":
+			_, err = kubeClient.RbacV1beta1().ClusterRoles().Create(resourceData.(*rbac.ClusterRole))
+		case "rolebinding":
+			_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Create(resourceData.(*rbac.RoleBinding))
+		case "clusterrolebinding":
+			_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Create(resourceData.(*rbac.ClusterRoleBinding))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -221,6 +242,16 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.Core().Endpoints(namespace).Delete(name, deleteOptions)
 	case "daemonset":
 		err = kubeClient.Extensions().DaemonSets(namespace).Delete(name, deleteOptions)
+	case "serviceaccount":
+		err = kubeClient.Core().ServiceAccounts(namespace).Delete(name, deleteOptions)
+	case "role":
+		err = kubeClient.RbacV1beta1().Roles(namespace).Delete(name, deleteOptions)
+	case "clusterrole":
+		err = kubeClient.RbacV1beta1().ClusterRoles().Delete(name, deleteOptions)
+	case "rolebinding":
+		err = kubeClient.RbacV1beta1().RoleBindings(namespace).Delete(name, deleteOptions)
+	case "clusterrolebinding":
+		err = kubeClient.RbacV1beta1().ClusterRoleBindings().Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -250,6 +281,16 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		_, err = kubeClient.Core().Endpoints(namespace).Update(resourceData.(*v1.Endpoints))
 	case "daemonset":
 		_, err = kubeClient.Extensions().DaemonSets(namespace).Update(resourceData.(*v1beta1.DaemonSet))
+	case "serviceaccount":
+		_, err = kubeClient.Core().ServiceAccounts(namespace).Update(resourceData.(*v1.ServiceAccount))
+	case "role":
+		_, err = kubeClient.RbacV1beta1().Roles(namespace).Update(resourceData.(*rbac.Role))
+	case "clusterrole":
+		_, err = kubeClient.RbacV1beta1().ClusterRoles().Update(resourceData.(*rbac.ClusterRole))
+	case "rolebinding":
+		_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Update(resourceData.(*rbac.RoleBinding))
+	case "clusterrolebinding":
+		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Update(resourceData.(*rbac.ClusterRoleBinding))
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -267,7 +308,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 		containers = resourceData.(*v1batch.Job).Spec.Template.Spec.Containers
 	case "daemonset":
 		containers = resourceData.(*v1beta1.DaemonSet).Spec.Template.Spec.Containers
-	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress", "endpoints":
+	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress", "endpoints", "serviceaccount", "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		return nil, nil
 	default:
 		return nil, UnsupportedResource(kind)

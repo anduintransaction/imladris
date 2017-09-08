@@ -10,6 +10,7 @@ import (
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	rbac "k8s.io/api/rbac/v1beta1"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -66,6 +67,16 @@ func (asset *Asset) parseResource(data []byte) error {
 		asset.ResourceData = &v1.Endpoints{}
 	case "daemonset":
 		asset.ResourceData = &v1beta1.DaemonSet{}
+	case "serviceaccount":
+		asset.ResourceData = &v1.ServiceAccount{}
+	case "role":
+		asset.ResourceData = &rbac.Role{}
+	case "clusterrole":
+		asset.ResourceData = &rbac.ClusterRole{}
+	case "rolebinding":
+		asset.ResourceData = &rbac.RoleBinding{}
+	case "clusterrolebinding":
+		asset.ResourceData = &rbac.ClusterRoleBinding{}
 	default:
 		return UnsupportedResource(asset.Kind)
 	}
