@@ -255,6 +255,13 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 	default:
 		return UnsupportedResource(kind)
 	}
+	statusErr, ok := err.(*errors.StatusError)
+	if !ok {
+		return err
+	}
+	if statusErr.Status().Reason == apiv1.StatusReasonNotFound {
+		return nil
+	}
 	return err
 }
 
