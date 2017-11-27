@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	"k8s.io/api/apps/v1beta2"
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -137,6 +138,8 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 		_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Get(name, apiv1.GetOptions{})
 	case "clusterrolebinding":
 		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Get(name, apiv1.GetOptions{})
+	case "statefulset":
+		_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Get(name, apiv1.GetOptions{})
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -187,6 +190,8 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 			_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Create(resourceData.(*rbac.RoleBinding))
 		case "clusterrolebinding":
 			_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Create(resourceData.(*rbac.ClusterRoleBinding))
+		case "statefulset":
+			_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Create(resourceData.(*v1beta2.StatefulSet))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -252,6 +257,8 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 		err = kubeClient.RbacV1beta1().RoleBindings(namespace).Delete(name, deleteOptions)
 	case "clusterrolebinding":
 		err = kubeClient.RbacV1beta1().ClusterRoleBindings().Delete(name, deleteOptions)
+	case "statefulset":
+		err = kubeClient.AppsV1beta2().StatefulSets(namespace).Delete(name, deleteOptions)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -298,6 +305,8 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		_, err = kubeClient.RbacV1beta1().RoleBindings(namespace).Update(resourceData.(*rbac.RoleBinding))
 	case "clusterrolebinding":
 		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Update(resourceData.(*rbac.ClusterRoleBinding))
+	case "statefulset":
+		_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Update(resourceData.(*v1beta2.StatefulSet))
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -315,7 +324,7 @@ func getResourceImages(kind string, resourceData interface{}) ([]string, error) 
 		containers = resourceData.(*v1batch.Job).Spec.Template.Spec.Containers
 	case "daemonset":
 		containers = resourceData.(*v1beta1.DaemonSet).Spec.Template.Spec.Containers
-	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress", "endpoints", "serviceaccount", "role", "clusterrole", "rolebinding", "clusterrolebinding":
+	case "service", "persistentvolumeclaim", "configmap", "secret", "ingress", "endpoints", "serviceaccount", "role", "clusterrole", "rolebinding", "clusterrolebinding", "statefulset":
 		return nil, nil
 	default:
 		return nil, UnsupportedResource(kind)
