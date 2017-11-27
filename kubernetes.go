@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/apps/v1beta2"
+	app "k8s.io/api/apps/v1beta1"
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -139,7 +139,7 @@ func checkResourceExist(kubeClient *kubernetes.Clientset, kind, name, namespace 
 	case "clusterrolebinding":
 		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Get(name, apiv1.GetOptions{})
 	case "statefulset":
-		_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Get(name, apiv1.GetOptions{})
+		_, err = kubeClient.AppsV1beta1().StatefulSets(namespace).Get(name, apiv1.GetOptions{})
 	default:
 		return false, UnsupportedResource(kind)
 	}
@@ -191,7 +191,7 @@ func createResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 		case "clusterrolebinding":
 			_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Create(resourceData.(*rbac.ClusterRoleBinding))
 		case "statefulset":
-			_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Create(resourceData.(*v1beta2.StatefulSet))
+			_, err = kubeClient.AppsV1beta1().StatefulSets(namespace).Create(resourceData.(*app.StatefulSet))
 		default:
 			return UnsupportedResource(kind)
 		}
@@ -258,7 +258,7 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 	case "clusterrolebinding":
 		err = kubeClient.RbacV1beta1().ClusterRoleBindings().Delete(name, deleteOptions)
 	case "statefulset":
-		err = kubeClient.AppsV1beta2().StatefulSets(namespace).Delete(name, deleteOptions)
+		err = destroyStatefulSet(kubeClient, name, namespace)
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -306,7 +306,7 @@ func updateResource(kubeClient *kubernetes.Clientset, kind, name, namespace stri
 	case "clusterrolebinding":
 		_, err = kubeClient.RbacV1beta1().ClusterRoleBindings().Update(resourceData.(*rbac.ClusterRoleBinding))
 	case "statefulset":
-		_, err = kubeClient.AppsV1beta2().StatefulSets(namespace).Update(resourceData.(*v1beta2.StatefulSet))
+		_, err = kubeClient.AppsV1beta1().StatefulSets(namespace).Update(resourceData.(*app.StatefulSet))
 	default:
 		return UnsupportedResource(kind)
 	}
@@ -366,6 +366,22 @@ func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string)
 		return err
 	}
 	return kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
+}
+
+func destroyStatefulSet(kubeClient *kubernetes.Clientset, name, namespace string) error {
+	deleteOptions := apiv1.NewDeleteOptions(0)
+	err := kubeClient.AppsV1beta1().StatefulSets(namespace).Delete(name, deleteOptions)
+	if err != nil {
+		return err
+	}
+	listOptions := apiv1.ListOptions{
+		LabelSelector: "name=" + name,
+	}
+	err = kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
+	if err != nil {
+		return err
+	}
+	return kubeClient.Core().PersistentVolumeClaims(namespace).DeleteCollection(deleteOptions, listOptions)
 }
 
 func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error {

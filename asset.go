@@ -7,7 +7,7 @@ import (
 	"bytes"
 
 	"gopkg.in/yaml.v2"
-	"k8s.io/api/apps/v1beta2"
+	app "k8s.io/api/apps/v1beta1"
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -79,7 +79,7 @@ func (asset *Asset) parseResource(data []byte) error {
 	case "clusterrolebinding":
 		asset.ResourceData = &rbac.ClusterRoleBinding{}
 	case "statefulset":
-		asset.ResourceData = &v1beta2.StatefulSet{}
+		asset.ResourceData = &app.StatefulSet{}
 	default:
 		return UnsupportedResource(asset.Kind)
 	}
