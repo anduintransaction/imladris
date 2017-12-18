@@ -455,6 +455,34 @@ func (p *Project) Down() error {
 	return p.runScripts(p.projectConfig.FinalizeDown)
 }
 
+func (p *Project) DownServices() error {
+	err := p.runScripts(p.projectConfig.InitDown)
+	if err != nil {
+		return err
+	}
+	for _, service := range p.services {
+		err := p.destroyAsset(service)
+		if err != nil {
+			return err
+		}
+	}
+	return p.runScripts(p.projectConfig.FinalizeDown)
+}
+
+func (p *Project) DownJobs() error {
+	err := p.runScripts(p.projectConfig.InitDown)
+	if err != nil {
+		return err
+	}
+	for _, job := range p.jobs {
+		err := p.destroyAsset(job)
+		if err != nil {
+			return err
+		}
+	}
+	return p.runScripts(p.projectConfig.FinalizeDown)
+}
+
 func (p *Project) Debug() {
 	Println(ColorGreen, "=========> Resources  <=========")
 	for _, asset := range p.resources {

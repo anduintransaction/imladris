@@ -64,6 +64,10 @@ func main() {
 		cmdUp(args[1:], config)
 	case "down":
 		cmdDown(args[1:], config)
+	case "down-services":
+		cmdDownServices(args[1:], config)
+	case "down-jobs":
+		cmdDownJobs(args[1:], config)
 	case "update":
 		cmdUpdate(args[1:], config)
 	case "wait":
