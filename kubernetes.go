@@ -246,7 +246,7 @@ func destroyResource(kubeClient *kubernetes.Clientset, kind, name, namespace str
 	case "endpoints":
 		err = kubeClient.Core().Endpoints(namespace).Delete(name, deleteOptions)
 	case "daemonset":
-		err = kubeClient.Extensions().DaemonSets(namespace).Delete(name, deleteOptions)
+		err = destroyDaemonSet(kubeClient, name, namespace)
 	case "serviceaccount":
 		err = kubeClient.Core().ServiceAccounts(namespace).Delete(name, deleteOptions)
 	case "role":
@@ -368,6 +368,22 @@ func destroyDeployment(kubeClient *kubernetes.Clientset, name, namespace string)
 	return kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
 }
 
+func destroyDaemonSet(kubeClient *kubernetes.Clientset, name, namespace string) error {
+	deleteOptions := apiv1.NewDeleteOptions(0)
+	err := kubeClient.Extensions().DaemonSets(namespace).Delete(name, deleteOptions)
+	if err != nil {
+		return err
+	}
+	listOptions := apiv1.ListOptions{
+		LabelSelector: "name=" + name,
+	}
+	err = kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
+	if err != nil {
+		return err
+	}
+	return kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
+}
+
 func destroyStatefulSet(kubeClient *kubernetes.Clientset, name, namespace string) error {
 	deleteOptions := apiv1.NewDeleteOptions(0)
 	err := kubeClient.AppsV1beta1().StatefulSets(namespace).Delete(name, deleteOptions)
@@ -381,7 +397,7 @@ func destroyStatefulSet(kubeClient *kubernetes.Clientset, name, namespace string
 	if err != nil {
 		return err
 	}
-	return kubeClient.Core().PersistentVolumeClaims(namespace).DeleteCollection(deleteOptions, listOptions)
+	return kubeClient.Core().Pods(namespace).DeleteCollection(deleteOptions, listOptions)
 }
 
 func destroyJob(kubeClient *kubernetes.Clientset, name, namespace string) error {
